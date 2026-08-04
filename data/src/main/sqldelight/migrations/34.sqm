@@ -1,0 +1,224 @@
+import eu.kanade.tachiyomi.source.model.UpdateStrategy;
+import java.util.Date;
+import kotlin.Boolean;
+import kotlin.collections.List;
+
+-- Novel media type: new tables, indexes, triggers and views.
+-- All statements are additive so existing Manga/Anime data is preserved.
+
+CREATE TABLE novels(
+    _id INTEGER NOT NULL PRIMARY KEY,
+    source INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    artist TEXT,
+    author TEXT,
+    description TEXT,
+    genre TEXT AS List<String>,
+    title TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    thumbnail_url TEXT,
+    favorite INTEGER AS Boolean NOT NULL,
+    last_update INTEGER,
+    next_update INTEGER,
+    initialized INTEGER AS Boolean NOT NULL,
+    viewer INTEGER NOT NULL,
+    chapter_flags INTEGER NOT NULL,
+    cover_last_modified INTEGER NOT NULL,
+    date_added INTEGER NOT NULL,
+    update_strategy INTEGER AS UpdateStrategy NOT NULL DEFAULT 0,
+    calculate_interval INTEGER DEFAULT 0 NOT NULL,
+    last_modified_at INTEGER NOT NULL DEFAULT 0,
+    favorite_modified_at INTEGER,
+    version INTEGER NOT NULL DEFAULT 0,
+    is_syncing INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE novel_chapters(
+    _id INTEGER NOT NULL PRIMARY KEY,
+    novel_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    name TEXT NOT NULL,
+    scanlator TEXT,
+    read INTEGER AS Boolean NOT NULL,
+    bookmark INTEGER AS Boolean NOT NULL,
+    last_page_read INTEGER NOT NULL,
+    chapter_number REAL NOT NULL,
+    source_order INTEGER NOT NULL,
+    date_fetch INTEGER NOT NULL,
+    date_upload INTEGER NOT NULL,
+    last_modified_at INTEGER NOT NULL DEFAULT 0,
+    version INTEGER NOT NULL DEFAULT 0,
+    is_syncing INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(novel_id) REFERENCES novels (_id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE novelhistory(
+    _id INTEGER NOT NULL PRIMARY KEY,
+    novel_chapter_id INTEGER NOT NULL UNIQUE,
+    last_read INTEGER AS Date,
+    time_read INTEGER NOT NULL,
+    FOREIGN KEY(novel_chapter_id) REFERENCES novel_chapters (_id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE novels_categories(
+    _id INTEGER NOT NULL PRIMARY KEY,
+    novel_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    FOREIGN KEY(category_id) REFERENCES categories (_id)
+    ON DELETE CASCADE,
+    FOREIGN KEY(novel_id) REFERENCES novels (_id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE novelsources(
+    _id INTEGER NOT NULL PRIMARY KEY,
+    lang TEXT NOT NULL,
+    name TEXT NOT NULL
+);
+
+CREATE INDEX novellib_favorite_index ON novels(favorite) WHERE favorite = 1;
+CREATE INDEX novels_url_index ON novels(url);
+CREATE INDEX novel_chapters_novel_id_index ON novel_chapters(novel_id);
+CREATE INDEX novel_chapters_unread_by_novel_index ON novel_chapters(novel_id, read) WHERE read = 0;
+CREATE INDEX novelhistory_history_chapter_id_index ON novelhistory(novel_chapter_id);
+
+CREATE TRIGGER update_last_favorite_at_novels
+AFTER UPDATE OF favorite ON novels
+BEGIN
+  UPDATE novels
+  SET favorite_modified_at = strftime('%s', 'now')
+  WHERE _id = new._id;
+END;
+
+CREATE TRIGGER update_last_modified_at_novels
+AFTER UPDATE ON novels
+FOR EACH ROW
+BEGIN
+  UPDATE novels
+  SET last_modified_at = strftime('%s', 'now')
+  WHERE _id = new._id;
+END;
+
+CREATE TRIGGER update_novel_version AFTER UPDATE ON novels
+BEGIN
+    UPDATE novels SET version = version + 1
+    WHERE _id = new._id AND new.is_syncing = 0 AND (
+        new.url != old.url OR
+        new.description != old.description OR
+        new.favorite != old.favorite
+    );
+END;
+
+CREATE TRIGGER update_last_modified_at_novel_chapters
+AFTER UPDATE ON novel_chapters
+FOR EACH ROW
+BEGIN
+  UPDATE novel_chapters
+  SET last_modified_at = strftime('%s', 'now')
+  WHERE _id = new._id;
+END;
+
+CREATE TRIGGER update_chapter_and_novel_version AFTER UPDATE ON novel_chapters
+WHEN new.is_syncing = 0 AND (
+    new.read != old.read OR
+    new.bookmark != old.bookmark OR
+    new.last_page_read != old.last_page_read
+)
+BEGIN
+    -- Update the chapter version
+    UPDATE novel_chapters SET version = version + 1
+    WHERE _id = new._id;
+
+    -- Update the novel version
+    UPDATE novels SET version = version + 1
+    WHERE _id = new.novel_id AND (SELECT is_syncing FROM novels WHERE _id = new.novel_id) = 0;
+END;
+
+CREATE TRIGGER insert_novel_category_update_version AFTER INSERT ON novels_categories
+BEGIN
+    UPDATE novels
+    SET version = version + 1
+    WHERE _id = new.novel_id AND (SELECT is_syncing FROM novels WHERE _id = new.novel_id) = 0;
+END;
+
+CREATE VIEW novellibraryView AS
+SELECT
+    N.*,
+    coalesce(C.total, 0) AS totalCount,
+    coalesce(C.readCount, 0) AS readCount,
+    coalesce(C.latestUpload, 0) AS latestUpload,
+    coalesce(C.fetchedAt, 0) AS chapterFetchedAt,
+    coalesce(C.lastRead, 0) AS lastRead,
+    coalesce(C.bookmarkCount, 0) AS bookmarkCount,
+    coalesce(NC.category_id, 0) AS category
+FROM novels N
+LEFT JOIN(
+    SELECT
+        novel_chapters.novel_id,
+        count(*) AS total,
+        sum(read) AS readCount,
+        coalesce(max(novel_chapters.date_upload), 0) AS latestUpload,
+        coalesce(max(novelhistory.last_read), 0) AS lastRead,
+        coalesce(max(novel_chapters.date_fetch), 0) AS fetchedAt,
+        sum(novel_chapters.bookmark) AS bookmarkCount
+    FROM novel_chapters
+    LEFT JOIN novelhistory
+    ON novel_chapters._id = novelhistory.novel_chapter_id
+    GROUP BY novel_chapters.novel_id
+) AS C
+ON N._id = C.novel_id
+LEFT JOIN novels_categories AS NC
+ON NC.novel_id = N._id
+WHERE N.favorite = 1;
+
+CREATE VIEW novelupdatesView AS
+SELECT
+    novels._id AS novelId,
+    novels.title AS novelTitle,
+    novel_chapters._id AS chapterId,
+    novel_chapters.name AS chapterName,
+    novel_chapters.scanlator,
+    novel_chapters.read,
+    novel_chapters.bookmark,
+    novel_chapters.last_page_read,
+    novels.source,
+    novels.favorite,
+    novels.thumbnail_url AS thumbnailUrl,
+    novels.cover_last_modified AS coverLastModified,
+    novel_chapters.date_upload AS dateUpload,
+    novel_chapters.date_fetch AS datefetch
+FROM novels JOIN novel_chapters
+ON novels._id = novel_chapters.novel_id
+WHERE favorite = 1
+AND date_fetch > date_added
+ORDER BY date_fetch DESC;
+
+CREATE VIEW novelhistoryView AS
+SELECT
+    novelhistory._id AS id,
+    novels._id AS novelId,
+    novel_chapters._id AS chapterId,
+    novels.title,
+    novels.thumbnail_url AS thumbnailUrl,
+    novels.source,
+    novels.favorite,
+    novels.cover_last_modified,
+    novel_chapters.chapter_number AS chapterNumber,
+    novelhistory.last_read AS readAt,
+    novelhistory.time_read AS readDuration,
+    max_last_read.last_read AS maxReadAt,
+    max_last_read.chapter_id AS maxReadAtChapterId
+FROM novels
+JOIN novel_chapters
+ON novels._id = novel_chapters.novel_id
+JOIN novelhistory
+ON novel_chapters._id = novelhistory.novel_chapter_id
+JOIN (
+    SELECT novel_chapters.novel_id, novel_chapters._id AS chapter_id, MAX(novelhistory.last_read) AS last_read
+    FROM novel_chapters JOIN novelhistory
+    ON novel_chapters._id = novelhistory.novel_chapter_id
+    GROUP BY novel_chapters.novel_id
+) AS max_last_read
+ON novel_chapters.novel_id = max_last_read.novel_id;

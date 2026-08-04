@@ -5,6 +5,8 @@ import data.History
 import data.Mangas
 import dataanime.Animehistory
 import dataanime.Animes
+import datanovel.Novelhistory
+import datanovel.Novels
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
@@ -34,6 +36,13 @@ class SearchHistoryRepositoryImplTest {
                 last_readAdapter = DateColumnAdapter,
             ),
             mangasAdapter = Mangas.Adapter(
+                genreAdapter = StringListColumnAdapter,
+                update_strategyAdapter = MangaUpdateStrategyColumnAdapter,
+            ),
+            novelhistoryAdapter = Novelhistory.Adapter(
+                last_readAdapter = DateColumnAdapter,
+            ),
+            novelsAdapter = Novels.Adapter(
                 genreAdapter = StringListColumnAdapter,
                 update_strategyAdapter = MangaUpdateStrategyColumnAdapter,
             ),

@@ -12,6 +12,8 @@ import data.History
 import data.Mangas
 import dataanime.Animehistory
 import dataanime.Animes
+import datanovel.Novelhistory
+import datanovel.Novels
 import eu.kanade.domain.track.anime.store.DelayedAnimeTrackingStore
 import eu.kanade.domain.track.manga.store.DelayedMangaTrackingStore
 import eu.kanade.tachiyomi.BuildConfig
@@ -130,6 +132,13 @@ class AppModule(val app: Application) : InjektModule {
                     last_readAdapter = DateColumnAdapter,
                 ),
                 mangasAdapter = Mangas.Adapter(
+                    genreAdapter = StringListColumnAdapter,
+                    update_strategyAdapter = MangaUpdateStrategyColumnAdapter,
+                ),
+                novelhistoryAdapter = Novelhistory.Adapter(
+                    last_readAdapter = DateColumnAdapter,
+                ),
+                novelsAdapter = Novels.Adapter(
                     genreAdapter = StringListColumnAdapter,
                     update_strategyAdapter = MangaUpdateStrategyColumnAdapter,
                 ),
