@@ -1,43 +1,37 @@
 # Role
-Kamu adalah seorang Senior Android Developer yang ahli dalam bahasa Kotlin, arsitektur MVVM, dan manajemen database lokal (SQLDelight/Room). Kamu sangat familiar dengan basis kode aplikasi open-source sejenis Mihon atau Tachiyomi, khususnya **Aniyomi** (yang mendukung Anime dan Manga).
+Kamu adalah seorang Senior Android Developer dan Software Architect yang ahli dalam bahasa Kotlin dan manajemen database lokal (SQLDelight/Room). Kamu sangat familiar dengan basis kode aplikasi open-source seperti Tachiyomi dan Aniyomi (yang saat ini mendukung Anime dan Manga). 
 
 # Memory
 1. **BACA ATURAN MEMORI:**
-   - Buka dan baca file `memory_prompt.md` untuk memahami seluruh protokol manajemen memori, pembatasan token, dan aturan penulisan log.
-   
+   - Buka dan baca file `memory_prompt.md` untuk memahami seluruh protokol manajemen memori, pembatasan token, dan aturan penulisan log secara ketat.
+
 # Task
-Buatkan implementasi database baru untuk fitur **Search History** (Riwayat Pencarian) di aplikasi Aniyomi. 
+Ini adalah **Fase 1** dari proyek besar untuk mengintegrasikan fitur **Novel** ke dalam Aniyomi. Aplikasi ini nantinya akan mendukung 3 tipe media: Anime, Manga, dan Novel. 
+Fokus utama dan **SATU-SATUNYA** tugasmu pada *prompt* ini adalah memodifikasi dan membangun arsitektur *database* (SQLDelight/Room) agar mendukung entitas Novel. **JANGAN** membuat UI, Reader, atau logika Network/Scraper pada tahap ini.
 
 # Requirements
-1. **Separasi per Extension/Source:** Tiap extension (sumber) harus memiliki riwayat pencarian yang berbeda. Riwayat pencarian dari Source A tidak boleh muncul saat pengguna mencari di Source B.
-2. **Dukungan Anime & Manga:** Database dan logic ini harus berlaku dan bisa digunakan oleh *source* Anime maupun Manga.
-3. **Fitur Hapus (Delete):** Pengguna harus bisa menghapus riwayat pencarian (bisa hapus satu item spesifik, hapus semua riwayat di satu *source*, atau hapus semua riwayat pencarian secara global).
-4. **Limitasi (WAJIB):** Batasi jumlah riwayat yang disimpan per *source* maksimal **8 riwayat terakhir**. Jika ada pencarian baru ke-9, riwayat yang paling lama (berdasarkan `created_at`) harus otomatis terhapus.
+1. **Unified Database:** Modifikasi skema database agar mendukung tipe media baru. Jika saat ini hanya ada flag/enum/tipe untuk `ANIME` dan `MANGA`, tambahkan dukungan untuk `NOVEL`. 
+2. **Backward Compatibility:** Semua modifikasi tabel tidak boleh merusak data Library pengguna yang sudah ada. Migrasi database (*database migration*) wajib ditulis dengan sangat hati-hati.
+3. **Pemisahan Kategori:** Skema harus bisa membedakan riwayat baca (*history*), pembaruan (*updates*), dan perpustakaan (*library*) antara Anime, Manga, dan Novel dengan efisien.
 
 ---
 
 # Implementation Steps
 
-### Step 1: Database Schema & Entity
-Buat skema tabel database `search_history` yang optimal. 
-Pastikan memiliki kolom setidaknya: 
-- `id` (Primary Key)
-- `source_id` (Int/Long, mengacu pada ID extension Anime atau Manga)
-- `search_query` (String)
-- `created_at` (Timestamp/Long)
+### Step 1: Database Schema & Entity Updates
+- Cek struktur tabel utama saat ini (seperti `manga`, `anime`, `history`, `chapter`, `episode`).
+- Putuskan pendekatan terbaik: apakah menambahkan tabel baru khusus `novel` dan `novel_chapter`, atau menggabungkannya ke tabel yang sudah ada (misalnya mengubah nama tabel menjadi `library_item` dengan kolom `item_type = 'NOVEL'`).
+- Tuliskan *file* skema yang baru (contoh: `.sq` file jika menggunakan SQLDelight atau *data class* beranotasi `@Entity` jika menggunakan Room).
 
-### Step 2: DAO / Database Queries
-Tuliskan *query* atau DAO (jika pakai Room) / `.sq` file (jika pakai SQLDelight) untuk operasi berikut:
-- `insertSearchQuery(sourceId, query)`: Memasukkan data pencarian baru. Jika *query* sudah ada di *source* yang sama, update `created_at` menjadi yang terbaru. **Penting:** Tambahkan *query* atau *logic* untuk menghapus riwayat terlama jika jumlah data di `source_id` tersebut sudah melebihi 8 item setelah *insert*.
-- `getSearchHistoryBySource(sourceId)`: Mengambil daftar riwayat berdasarkan `source_id` (maksimal 8), urutkan dari yang paling baru.
-- `deleteSearchQuery(id)`: Menghapus satu item riwayat.
-- `clearSearchHistoryBySource(sourceId)`: Menghapus semua riwayat di satu *source*.
-- `clearAllSearchHistory()`: Menghapus seluruh riwayat pencarian.
+### Step 2: Database Migration Script
+- Buat skrip migrasi *database* (misalnya dari versi N ke N+1).
+- Pastikan ada logika SQL `ALTER TABLE` yang tepat jika kamu menambahkan kolom baru ke tabel yang sudah *existing*.
 
-### Step 3: Repository & ViewModel Logic
-Buat class `SearchHistoryRepository` untuk membungkus operasi database. Lalu, berikan contoh singkat bagaimana fungsi-fungsi ini diintegrasikan dan dipanggil di dalam `SearchViewModel` (saat *user* mengetik pencarian dan saat *user* menekan tombol silang/hapus).
+### Step 3: DAO / Database Queries (CRUD)
+- Tulis *query* dasar (Insert, Update, Delete, Select) untuk mengelola entitas Novel di *database*.
+- Buat *query* untuk mengambil daftar Novel berdasarkan kategori (*Library*) dan mengambil daftar *chapter* sebuah Novel.
 
-### Step 4: Testing & Clean Code (WAJIB)
- 1. Jalankan `./gradlew spotlessApply` untuk merapikan format kode.
- 2. Jalankan `./gradlew testDebugUnitTest` dan pastikan **BUILD SUCCESSFUL**.
- 3. Simulasikan *error decoding* (misalnya dengan gambar beresolusi sangat besar di perangkat *low-end*) dan verifikasi bahwa *pop-up* peringatan muncul dengan benar tanpa membuat aplikasi *crash*.
+### Step 4: Testing & Build (WAJIB)
+1. **Formatting:** Jalankan `./gradlew spotlessApply` untuk merapikan format kode Kotlin dan SQL.
+2. **Build Check:** Jalankan `./gradlew assembleDebug` (atau *task build* yang relevan) dan pastikan **BUILD SUCCESSFUL**.
+3. **Migration Test:** Buat *unit test* sederhana untuk menguji apakah migrasi *database* dari versi lama ke versi baru berhasil tanpa menghilangkan *dummy data* Manga/Anime.
