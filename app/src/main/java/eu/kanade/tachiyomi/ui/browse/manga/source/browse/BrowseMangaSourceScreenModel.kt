@@ -25,6 +25,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.util.removeCovers
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -48,6 +49,9 @@ import tachiyomi.domain.entries.manga.model.Manga
 import tachiyomi.domain.entries.manga.model.toMangaUpdate
 import tachiyomi.domain.items.chapter.interactor.SetMangaDefaultChapterFlags
 import tachiyomi.domain.library.service.LibraryPreferences
+import tachiyomi.domain.searchhistory.model.SearchHistory
+import tachiyomi.domain.searchhistory.model.SearchSourceType
+import tachiyomi.domain.searchhistory.repository.SearchHistoryRepository
 import tachiyomi.domain.source.manga.interactor.GetRemoteManga
 import tachiyomi.domain.source.manga.service.MangaSourceManager
 import uy.kohesive.injekt.Injekt
@@ -72,6 +76,7 @@ class BrowseMangaSourceScreenModel(
     private val updateManga: UpdateManga = Injekt.get(),
     private val addTracks: AddMangaTracks = Injekt.get(),
     private val getIncognitoState: GetMangaIncognitoState = Injekt.get(),
+    private val searchHistoryRepository: SearchHistoryRepository = Injekt.get(),
 ) : StateScreenModel<BrowseMangaSourceScreenModel.State>(State(Listing.valueOf(listingQuery))) {
 
     var displayMode by sourcePreferences.sourceDisplayMode().asState(screenModelScope)
@@ -79,6 +84,13 @@ class BrowseMangaSourceScreenModel(
     val source = sourceManager.getOrStub(sourceId)
 
     init {
+        screenModelScope.launch {
+            searchHistoryRepository.getSearchHistoryBySource(sourceId, SearchSourceType.MANGA)
+                .collect { history ->
+                    mutableState.update { it.copy(searchHistory = history.toImmutableList()) }
+                }
+        }
+
         if (source is CatalogueSource) {
             mutableState.update {
                 var query: String? = null
@@ -169,6 +181,13 @@ class BrowseMangaSourceScreenModel(
 
         val input = state.value.listing as? Listing.Search
             ?: Listing.Search(query = null, filters = source.getFilterList())
+
+        val effectiveQuery = query ?: input.query
+        if (!effectiveQuery.isNullOrBlank()) {
+            screenModelScope.launch {
+                searchHistoryRepository.insertSearchQuery(sourceId, effectiveQuery, SearchSourceType.MANGA)
+            }
+        }
 
         mutableState.update {
             it.copy(
@@ -328,6 +347,24 @@ class BrowseMangaSourceScreenModel(
         mutableState.update { it.copy(toolbarQuery = query) }
     }
 
+    fun deleteSearchQuery(id: Long) {
+        screenModelScope.launch {
+            searchHistoryRepository.deleteSearchQuery(id, SearchSourceType.MANGA)
+        }
+    }
+
+    fun clearSearchHistory() {
+        screenModelScope.launch {
+            searchHistoryRepository.clearSearchHistoryBySource(sourceId, SearchSourceType.MANGA)
+        }
+    }
+
+    fun clearAllSearchHistory() {
+        screenModelScope.launch {
+            searchHistoryRepository.clearAllSearchHistory()
+        }
+    }
+
     sealed class Listing(open val query: String?, open val filters: FilterList) {
         data object Popular : Listing(query = GetRemoteManga.QUERY_POPULAR, filters = FilterList())
         data object Latest : Listing(query = GetRemoteManga.QUERY_LATEST, filters = FilterList())
@@ -364,6 +401,7 @@ class BrowseMangaSourceScreenModel(
         val filters: FilterList = FilterList(),
         val toolbarQuery: String? = null,
         val dialog: Dialog? = null,
+        val searchHistory: ImmutableList<SearchHistory> = persistentListOf(),
     ) {
         val isUserQuery get() = listing is Listing.Search && !listing.query.isNullOrEmpty()
     }

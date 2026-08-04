@@ -39,6 +39,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.core.util.ifMangaSourcesLoaded
 import eu.kanade.presentation.browse.RemoveEntryDialog
+import eu.kanade.presentation.browse.SearchHistoryRow
 import eu.kanade.presentation.browse.manga.BrowseSourceContent
 import eu.kanade.presentation.browse.manga.MissingSourceScreen
 import eu.kanade.presentation.browse.manga.components.BrowseMangaSourceToolbar
@@ -209,6 +210,15 @@ data class BrowseMangaSourceScreen(
                                 },
                             )
                         }
+                    }
+
+                    if (!state.isUserQuery && state.searchHistory.isNotEmpty()) {
+                        SearchHistoryRow(
+                            searchHistory = state.searchHistory,
+                            onSearchClick = { query -> screenModel.search(query) },
+                            onDeleteClick = screenModel::deleteSearchQuery,
+                            onClearClick = screenModel::clearSearchHistory,
+                        )
                     }
 
                     HorizontalDivider()

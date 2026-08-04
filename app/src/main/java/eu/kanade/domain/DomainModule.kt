@@ -78,6 +78,7 @@ import tachiyomi.data.history.manga.MangaHistoryRepositoryImpl
 import tachiyomi.data.items.chapter.ChapterRepositoryImpl
 import tachiyomi.data.items.episode.EpisodeRepositoryImpl
 import tachiyomi.data.release.ReleaseServiceImpl
+import tachiyomi.data.searchhistory.SearchHistoryRepositoryImpl
 import tachiyomi.data.source.anime.AnimeSourceRepositoryImpl
 import tachiyomi.data.source.anime.AnimeStubSourceRepositoryImpl
 import tachiyomi.data.source.manga.MangaSourceRepositoryImpl
@@ -172,6 +173,7 @@ import tachiyomi.domain.items.season.interactor.SetAnimeDefaultSeasonFlags
 import tachiyomi.domain.items.season.interactor.ShouldUpdateDbSeason
 import tachiyomi.domain.release.interactor.GetApplicationRelease
 import tachiyomi.domain.release.service.ReleaseService
+import tachiyomi.domain.searchhistory.repository.SearchHistoryRepository
 import tachiyomi.domain.source.anime.interactor.GetAnimeSourcesWithNonLibraryAnime
 import tachiyomi.domain.source.anime.interactor.GetRemoteAnime
 import tachiyomi.domain.source.anime.repository.AnimeSourceRepository
@@ -363,6 +365,8 @@ class DomainModule : InjektModule {
 
         addSingletonFactory<MangaSourceRepository> { MangaSourceRepositoryImpl(get(), get()) }
         addSingletonFactory<MangaStubSourceRepository> { MangaStubSourceRepositoryImpl(get()) }
+
+        addSingletonFactory<SearchHistoryRepository> { SearchHistoryRepositoryImpl(get(), get()) }
         addFactory { GetEnabledMangaSources(get(), get()) }
         addFactory { GetLanguagesWithMangaSources(get(), get()) }
         addFactory { GetRemoteManga(get()) }

@@ -1,0 +1,45 @@
+CREATE TABLE search_history(
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER NOT NULL,
+    search_query TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX search_history_source_id_index ON search_history(source_id);
+
+CREATE UNIQUE INDEX search_history_source_query_index ON search_history(source_id, search_query);
+
+insertSearchQuery:
+INSERT INTO search_history(source_id, search_query, created_at)
+VALUES (:sourceId, :query, :createdAt)
+ON CONFLICT(source_id, search_query)
+DO UPDATE SET created_at = :createdAt;
+
+deleteOldestExcess:
+DELETE FROM search_history
+WHERE source_id = :sourceId
+AND id NOT IN (
+    SELECT id
+    FROM search_history
+    WHERE source_id = :sourceId
+    ORDER BY created_at DESC, id DESC
+    LIMIT :limit
+);
+
+getSearchHistoryBySource:
+SELECT id, source_id, search_query, created_at
+FROM search_history
+WHERE source_id = :sourceId
+ORDER BY created_at DESC, id DESC
+LIMIT :limit;
+
+deleteSearchQuery:
+DELETE FROM search_history
+WHERE id = :id;
+
+clearSearchHistoryBySource:
+DELETE FROM search_history
+WHERE source_id = :sourceId;
+
+clearAllSearchHistory:
+DELETE FROM search_history;

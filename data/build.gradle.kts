@@ -42,4 +42,9 @@ dependencies {
     implementation(projects.core.common)
 
     api(libs.bundles.sqldelight)
+
+    testImplementation(libs.bundles.test)
+    testImplementation(kotlinx.coroutines.test)
+    testImplementation(libs.sqldelight.driver.jvm)
+    testImplementation(libs.sqlite.jdbc)
 }

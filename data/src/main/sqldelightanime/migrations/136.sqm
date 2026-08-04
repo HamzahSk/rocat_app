@@ -1,0 +1,10 @@
+CREATE TABLE search_history(
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER NOT NULL,
+    search_query TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX search_history_source_id_index ON search_history(source_id);
+
+CREATE UNIQUE INDEX search_history_source_query_index ON search_history(source_id, search_query);

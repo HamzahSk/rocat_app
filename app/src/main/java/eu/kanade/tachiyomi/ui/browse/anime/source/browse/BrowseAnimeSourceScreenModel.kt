@@ -27,6 +27,7 @@ import eu.kanade.tachiyomi.data.cache.AnimeCoverCache
 import eu.kanade.tachiyomi.util.removeBackgrounds
 import eu.kanade.tachiyomi.util.removeCovers
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -50,6 +51,9 @@ import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.entries.anime.model.toAnimeUpdate
 import tachiyomi.domain.items.episode.interactor.SetAnimeDefaultEpisodeFlags
 import tachiyomi.domain.library.service.LibraryPreferences
+import tachiyomi.domain.searchhistory.model.SearchHistory
+import tachiyomi.domain.searchhistory.model.SearchSourceType
+import tachiyomi.domain.searchhistory.repository.SearchHistoryRepository
 import tachiyomi.domain.source.anime.interactor.GetRemoteAnime
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import uy.kohesive.injekt.Injekt
@@ -75,6 +79,7 @@ class BrowseAnimeSourceScreenModel(
     private val updateAnime: UpdateAnime = Injekt.get(),
     private val addTracks: AddAnimeTracks = Injekt.get(),
     private val getIncognitoState: GetAnimeIncognitoState = Injekt.get(),
+    private val searchHistoryRepository: SearchHistoryRepository = Injekt.get(),
 ) : StateScreenModel<BrowseAnimeSourceScreenModel.State>(State(Listing.valueOf(listingQuery))) {
 
     var displayMode by sourcePreferences.sourceDisplayMode().asState(screenModelScope)
@@ -82,6 +87,13 @@ class BrowseAnimeSourceScreenModel(
     val source = sourceManager.getOrStub(sourceId)
 
     init {
+        screenModelScope.launch {
+            searchHistoryRepository.getSearchHistoryBySource(sourceId, SearchSourceType.ANIME)
+                .collect { history ->
+                    mutableState.update { it.copy(searchHistory = history.toImmutableList()) }
+                }
+        }
+
         if (source is AnimeCatalogueSource) {
             mutableState.update {
                 var query: String? = null
@@ -172,6 +184,13 @@ class BrowseAnimeSourceScreenModel(
 
         val input = state.value.listing as? Listing.Search
             ?: Listing.Search(query = null, filters = source.getFilterList())
+
+        val effectiveQuery = query ?: input.query
+        if (!effectiveQuery.isNullOrBlank()) {
+            screenModelScope.launch {
+                searchHistoryRepository.insertSearchQuery(sourceId, effectiveQuery, SearchSourceType.ANIME)
+            }
+        }
 
         mutableState.update {
             it.copy(
@@ -330,6 +349,24 @@ class BrowseAnimeSourceScreenModel(
         mutableState.update { it.copy(toolbarQuery = query) }
     }
 
+    fun deleteSearchQuery(id: Long) {
+        screenModelScope.launch {
+            searchHistoryRepository.deleteSearchQuery(id, SearchSourceType.ANIME)
+        }
+    }
+
+    fun clearSearchHistory() {
+        screenModelScope.launch {
+            searchHistoryRepository.clearSearchHistoryBySource(sourceId, SearchSourceType.ANIME)
+        }
+    }
+
+    fun clearAllSearchHistory() {
+        screenModelScope.launch {
+            searchHistoryRepository.clearAllSearchHistory()
+        }
+    }
+
     sealed class Listing(open val query: String?, open val filters: AnimeFilterList) {
         data object Popular : Listing(
             query = GetRemoteAnime.QUERY_POPULAR,
@@ -372,6 +409,7 @@ class BrowseAnimeSourceScreenModel(
         val filters: AnimeFilterList = AnimeFilterList(),
         val toolbarQuery: String? = null,
         val dialog: Dialog? = null,
+        val searchHistory: ImmutableList<SearchHistory> = persistentListOf(),
     ) {
         val isUserQuery get() = listing is Listing.Search && !listing.query.isNullOrEmpty()
     }

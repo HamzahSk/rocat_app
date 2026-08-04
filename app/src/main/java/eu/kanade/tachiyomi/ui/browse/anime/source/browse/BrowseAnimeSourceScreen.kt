@@ -39,6 +39,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.core.util.ifAnimeSourcesLoaded
 import eu.kanade.presentation.browse.RemoveEntryDialog
+import eu.kanade.presentation.browse.SearchHistoryRow
 import eu.kanade.presentation.browse.anime.BrowseAnimeSourceContent
 import eu.kanade.presentation.browse.anime.MissingSourceScreen
 import eu.kanade.presentation.browse.anime.components.BrowseAnimeSourceToolbar
@@ -210,6 +211,15 @@ data class BrowseAnimeSourceScreen(
                                 },
                             )
                         }
+                    }
+
+                    if (!state.isUserQuery && state.searchHistory.isNotEmpty()) {
+                        SearchHistoryRow(
+                            searchHistory = state.searchHistory,
+                            onSearchClick = { query -> screenModel.search(query) },
+                            onDeleteClick = screenModel::deleteSearchQuery,
+                            onClearClick = screenModel::clearSearchHistory,
+                        )
                     }
 
                     HorizontalDivider()
