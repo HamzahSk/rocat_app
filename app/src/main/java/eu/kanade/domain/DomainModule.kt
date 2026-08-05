@@ -222,6 +222,7 @@ import tachiyomi.domain.source.manga.interactor.GetMangaSourcesWithNonLibraryMan
 import tachiyomi.domain.source.manga.interactor.GetRemoteManga
 import tachiyomi.domain.source.manga.repository.MangaSourceRepository
 import tachiyomi.domain.source.manga.repository.MangaStubSourceRepository
+import tachiyomi.domain.source.novel.interactor.GetRemoteNovel
 import tachiyomi.domain.source.novel.repository.NovelSourceRepository
 import tachiyomi.domain.source.novel.repository.NovelStubSourceRepository
 import tachiyomi.domain.track.anime.interactor.DeleteAnimeTrack
@@ -446,6 +447,7 @@ class DomainModule : InjektModule {
         addFactory { GetEnabledNovelSources(get(), get()) }
         addFactory { GetLanguagesWithNovelSources(get(), get()) }
         addFactory { GetNovelSourcesWithFavoriteCount(get()) }
+        addFactory { GetRemoteNovel(get()) }
         addFactory { ToggleNovelSource(get()) }
         addFactory { ToggleNovelSourcePin(get()) }
 

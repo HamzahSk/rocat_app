@@ -14,9 +14,11 @@ import eu.kanade.presentation.browse.novel.NovelSourceOptionsDialog
 import eu.kanade.presentation.browse.novel.NovelSourcesScreen
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.TabContent
+import eu.kanade.tachiyomi.ui.browse.novel.source.browse.BrowseNovelSourceScreen
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import tachiyomi.domain.source.novel.interactor.GetRemoteNovel
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -40,7 +42,9 @@ fun Screen.novelSourcesTab(): TabContent {
             NovelSourcesScreen(
                 state = state,
                 contentPadding = contentPadding,
-                onClickItem = { },
+                onClickItem = { source ->
+                    navigator.push(BrowseNovelSourceScreen(source.id, GetRemoteNovel.QUERY_POPULAR))
+                },
                 onClickPin = screenModel::togglePin,
                 onLongClickItem = screenModel::showSourceDialog,
             )

@@ -17,7 +17,7 @@ class SearchHistoryRepositoryImpl(
         sourceType: SearchSourceType,
     ): Flow<List<SearchHistory>> {
         return when (sourceType) {
-            SearchSourceType.MANGA -> mangaHandler.subscribeToList {
+            SearchSourceType.MANGA, SearchSourceType.NOVEL -> mangaHandler.subscribeToList {
                 searchHistoryQueries.getSearchHistoryBySource(
                     sourceId,
                     SearchHistoryRepository.MAX_SEARCH_HISTORY,
@@ -42,7 +42,7 @@ class SearchHistoryRepositoryImpl(
         now: Long,
     ) {
         when (sourceType) {
-            SearchSourceType.MANGA -> mangaHandler.await(inTransaction = true) {
+            SearchSourceType.MANGA, SearchSourceType.NOVEL -> mangaHandler.await(inTransaction = true) {
                 searchHistoryQueries.insertSearchQuery(sourceId, query, now)
                 searchHistoryQueries.deleteOldestExcess(sourceId, SearchHistoryRepository.MAX_SEARCH_HISTORY)
             }
@@ -59,7 +59,7 @@ class SearchHistoryRepositoryImpl(
         sourceType: SearchSourceType,
     ) {
         when (sourceType) {
-            SearchSourceType.MANGA -> mangaHandler.await {
+            SearchSourceType.MANGA, SearchSourceType.NOVEL -> mangaHandler.await {
                 searchHistoryQueries.deleteSearchQuery(id)
             }
 
@@ -74,7 +74,7 @@ class SearchHistoryRepositoryImpl(
         sourceType: SearchSourceType,
     ) {
         when (sourceType) {
-            SearchSourceType.MANGA -> mangaHandler.await {
+            SearchSourceType.MANGA, SearchSourceType.NOVEL -> mangaHandler.await {
                 searchHistoryQueries.clearSearchHistoryBySource(sourceId)
             }
 

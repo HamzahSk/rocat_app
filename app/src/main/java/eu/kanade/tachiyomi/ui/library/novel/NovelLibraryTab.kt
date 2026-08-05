@@ -35,6 +35,7 @@ import eu.kanade.presentation.library.novel.NovelLibrarySettingsDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.category.CategoriesTab
+import eu.kanade.tachiyomi.ui.entries.novel.NovelScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.novelreader.NovelReaderActivity
@@ -197,12 +198,7 @@ data object NovelLibraryTab : Tab {
                         showPageTabs = state.showCategoryTabs || !state.searchQuery.isNullOrEmpty(),
                         onChangeCurrentPage = { screenModel.activeCategoryIndex = it },
                         onNovelClicked = { id ->
-                            val novel = state.getLibraryItemsByPage(
-                                screenModel.activeCategoryIndex,
-                            ).firstOrNull { it.libraryNovel.novel.id == id }?.libraryNovel
-                            if (novel != null) {
-                                openReader(novel)
-                            }
+                            navigator.push(NovelScreen(id))
                         },
                         onContinueReadingClicked = { it: LibraryNovel ->
                             openReader(it)

@@ -46,11 +46,12 @@ jobs:
               models:
                 # Ganti 'auto' di bawah ini dengan ID Model yang ada di menu "Model Square" Gls
                 # Contoh: claude-haiku-4-5 atau gpt-4o
-                - id: deepseek-v4-pro
+                - id: mimo-v2.5
                   name: Gls Model
           EOF
           
-          omp --model gls_proxy/deepseek-v4-pro -p "$(cat prompt.md)" || true
+          # Menjalankan OMP, menangkap stderr & stdout, dan menyimpannya ke ai_response.txt
+          omp --model gls_proxy/mimo-v2.5 -p "$(cat prompt.md)" 2>&1 | tee ai_response.txt || true
 
       - name: Collect Changed and New Files
         run: |
@@ -68,6 +69,11 @@ jobs:
               cp "$file" "output_artifact/$file"
             fi
           done
+          
+          # 4. Tambahkan juga file teks respon AI ke dalam output_artifact
+          if [ -f "ai_response.txt" ]; then
+            cp ai_response.txt output_artifact/
+          fi
           
           echo "File yang berhasil diubah/dibuat beserta strukturnya:"
           git diff --name-status --cached

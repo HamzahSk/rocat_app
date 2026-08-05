@@ -39,7 +39,7 @@ jobs:
         run: |
           # Menjalankan OpenCode dan menyimpan log terminal ke file
           opencode run \
-            --model opencode/gpt-5.1-codex \
+            --model opencode/deepseek-v4-flash-free \
             --auto \
             "$(cat prompt.md)" 2>&1 | tee ai-response-recap.txt || true
 
