@@ -1,0 +1,79 @@
+name: OMP DB Fixer & Auto-Test 4
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  omp-fix-and-test:
+    name: Let OMP Fix & Test DB History
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version-file: .github/.java-version
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install OMP
+        run: curl -fsSL https://omp.sh/install | sh
+
+      - name: Run OMP to Fix and Verify
+        env:
+          # Pastikan API Key Gls milikmu ditaruh di GitHub Secrets demi keamanan!
+          GLS_API_KEY: ${{ secrets.APIKEY_GLSDE5 }}
+        run: |
+          mkdir -p ~/.omp/agent
+          
+          # --- MEMBUAT CONFIG MODELS.YML UNTUK GLS ---
+          cat << 'EOF' > ~/.omp/agent/models.yml
+          providers:
+            gls_proxy:
+              # Base URL untuk Gls (jangan lupa /v1)
+              baseUrl: "https://api-public.proxy-gls.de5.net/v1"
+              apiKey: GLS_API_KEY
+              # Format standar New API
+              api: openai-completions
+              models:
+                # Ganti 'auto' di bawah ini dengan ID Model yang ada di menu "Model Square" Gls
+                # Contoh: claude-haiku-4-5 atau gpt-4o
+                - id: deepseek-v4-pro
+                  name: Gls Model
+          EOF
+          
+          omp --model gls_proxy/deepseek-v4-pro -p "$(cat prompt.md)" || true
+
+      - name: Collect Changed and New Files
+        run: |
+          # 1. Masukkan semua perubahan dan file baru ke staging area
+          git add -A
+          
+          # 2. Buat folder penampung sementara
+          mkdir -p output_artifact
+          
+          # 3. Looping semua file yang berubah, buat struktur foldernya, dan copy filenya
+          for file in $(git diff --name-only --cached); do
+            # Pastikan itu benar-benar file, bukan folder yang terhapus
+            if [ -f "$file" ]; then
+              mkdir -p "output_artifact/$(dirname "$file")"
+              cp "$file" "output_artifact/$file"
+            fi
+          done
+          
+          echo "File yang berhasil diubah/dibuat beserta strukturnya:"
+          git diff --name-status --cached
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: omp-db-fixed-files-${{ github.sha }}
+          path: output_artifact/
