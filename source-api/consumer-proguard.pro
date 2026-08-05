@@ -6,4 +6,9 @@
 -keep class eu.kanade.tachiyomi.animesource.online.** { public protected *; }
 -keep class eu.kanade.tachiyomi.animesource.** extends eu.kanade.tachiyomi.animesource.AnimeSource { public protected *; }
 
+-keep class eu.kanade.tachiyomi.novelsource.model.** { public protected *; }
+-keep class eu.kanade.tachiyomi.novelsource.online.** { public protected *; }
+-keep class eu.kanade.tachiyomi.novelsource.** extends eu.kanade.tachiyomi.novelsource.NovelSource { public protected *; }
+-keep class eu.kanade.tachiyomi.novelsource.util.** { public protected *; }
+
 -keep,allowoptimization class eu.kanade.tachiyomi.util.JsoupExtensionsKt { public protected *; }

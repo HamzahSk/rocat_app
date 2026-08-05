@@ -1,0 +1,23 @@
+Working...
+Fase 6 selesai. Ringkasan perubahan:
+
+---
+
+### Perubahan yang Dibuat
+
+| File | Perubahan |
+|---|---|
+| `source-api/consumer-proguard.pro` | Tambah 4 keep rules eksplisit untuk `novelsource.model.*`, `novelsource.online.*`, `novelsource.** extends NovelSource`, `novelsource.util.*` |
+| `app/proguard-rules.pro` | Tambah 4 rules identik sebagai secondary safety net |
+| `app/.../SyncNovelChaptersWithSource.kt` | Wrap `NovelChapterNumberParser.parse()` dalam try-catch → log warning + fallback `chapterNumber ?: -1.0` |
+
+### Root Cause
+
+`NoClassDefFoundError` terjadi karena **dua faktor**:
+1. **ProGuard consumer rules tidak lengkap** — `source-api/consumer-proguard.pro` hanya melindungi `source.*` dan `animesource.*`, tetapi tidak ada rules untuk `novelsource.*`. Meskipun app proguard punya `-keep,allowoptimization class eu.kanade.**`, KMP module consumer proguard merging bisa tidak konsisten.
+2. **Tidak ada defensive error handling** — Jika `NovelChapterNumberParser.parse()` melempar exception apapun (termasuk `NoClassDefFoundError`), seluruh coroutine chapter sync gagal → chapter kosong di UI.
+
+### Verifikasi
+- `spotlessApply` ✓
+- `assembleDebug` BUILD SUCCESSFUL (380 tasks)
+- `testDebugUnitTest` — **38 PASSED** (termasuk 9 `NovelChapterNumberParserTest` kasus)

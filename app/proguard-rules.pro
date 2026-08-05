@@ -30,6 +30,12 @@
 -keep,allowoptimization class eu.kanade.tachiyomi.AppInfo { public protected *; }
 -keep,allowoptimization class eu.kanade.tachiyomi.torrentutils.** { public protected *; }
 
+# Novel source API — mirror of source/animesource rules above
+-keep class eu.kanade.tachiyomi.novelsource.model.** { public protected *; }
+-keep class eu.kanade.tachiyomi.novelsource.online.** { public protected *; }
+-keep class eu.kanade.tachiyomi.novelsource.** extends eu.kanade.tachiyomi.novelsource.NovelSource { public protected *; }
+-keep class eu.kanade.tachiyomi.novelsource.util.** { public protected *; }
+
 ##---------------Begin: proguard configuration for RxJava 1.x  ----------
 -dontwarn sun.misc.**
 

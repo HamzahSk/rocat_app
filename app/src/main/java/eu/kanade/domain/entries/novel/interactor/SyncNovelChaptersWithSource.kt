@@ -7,6 +7,8 @@ import eu.kanade.tachiyomi.novelsource.NovelSource
 import eu.kanade.tachiyomi.novelsource.model.SNovelChapter
 import eu.kanade.tachiyomi.novelsource.online.HttpNovelSource
 import eu.kanade.tachiyomi.novelsource.util.NovelChapterNumberParser
+import logcat.LogPriority
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.items.chapter.ChapterSanitizer
 import tachiyomi.domain.entries.novel.interactor.UpdateNovel
 import tachiyomi.domain.entries.novel.model.Novel
@@ -90,11 +92,18 @@ class SyncNovelChaptersWithSource(
             }
 
             // Recognize chapter number for the chapter.
-            val chapterNumber = NovelChapterNumberParser.parse(
-                novel.title,
-                chapter.name,
-                chapter.chapterNumber,
-            )
+            val chapterNumber = try {
+                NovelChapterNumberParser.parse(
+                    novel.title,
+                    chapter.name,
+                    chapter.chapterNumber,
+                )
+            } catch (e: Throwable) {
+                logcat(LogPriority.WARN, e) {
+                    "Failed to parse chapter number for '${chapter.name}', using fallback"
+                }
+                chapter.chapterNumber ?: -1.0
+            }
             chapter = chapter.copy(chapterNumber = chapterNumber)
 
             val dbChapter = dbChapters.find { it.url == chapter.url }
