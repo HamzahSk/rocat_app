@@ -25,6 +25,9 @@ import eu.kanade.tachiyomi.ui.browse.manga.extension.MangaExtensionsScreenModel
 import eu.kanade.tachiyomi.ui.browse.manga.extension.mangaExtensionsTab
 import eu.kanade.tachiyomi.ui.browse.manga.migration.sources.migrateMangaSourceTab
 import eu.kanade.tachiyomi.ui.browse.manga.source.mangaSourcesTab
+import eu.kanade.tachiyomi.ui.browse.novel.extension.NovelExtensionsScreenModel
+import eu.kanade.tachiyomi.ui.browse.novel.extension.novelExtensionsTab
+import eu.kanade.tachiyomi.ui.browse.novel.source.novelSourcesTab
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.channels.BufferOverflow
@@ -56,11 +59,11 @@ data object BrowseTab : Tab {
     private val switchToTabNumberChannel = Channel<Int>(1, BufferOverflow.DROP_OLDEST)
 
     fun showExtension() {
-        switchToTabNumberChannel.trySend(3) // Manga extensions: tab no. 3
+        switchToTabNumberChannel.trySend(4) // Manga extensions: tab no. 4
     }
 
     fun showAnimeExtension() {
-        switchToTabNumberChannel.trySend(2) // Anime extensions: tab no. 2
+        switchToTabNumberChannel.trySend(3) // Anime extensions: tab no. 3
     }
 
     @Composable
@@ -74,11 +77,16 @@ data object BrowseTab : Tab {
         val animeExtensionsScreenModel = rememberScreenModel { AnimeExtensionsScreenModel() }
         val animeExtensionsState by animeExtensionsScreenModel.state.collectAsState()
 
+        val novelExtensionsScreenModel = rememberScreenModel { NovelExtensionsScreenModel() }
+        val novelExtensionsState by novelExtensionsScreenModel.state.collectAsState()
+
         val tabs = persistentListOf(
             animeSourcesTab(),
             mangaSourcesTab(),
+            novelSourcesTab(),
             animeExtensionsTab(animeExtensionsScreenModel),
             mangaExtensionsTab(mangaExtensionsScreenModel),
+            novelExtensionsTab(novelExtensionsScreenModel),
             migrateAnimeSourceTab(),
             migrateMangaSourceTab(),
         )
@@ -93,6 +101,8 @@ data object BrowseTab : Tab {
             onChangeMangaSearchQuery = mangaExtensionsScreenModel::search,
             animeSearchQuery = animeExtensionsState.searchQuery,
             onChangeAnimeSearchQuery = animeExtensionsScreenModel::search,
+            novelSearchQuery = novelExtensionsState.searchQuery,
+            onChangeNovelSearchQuery = novelExtensionsScreenModel::search,
             scrollable = true,
         )
         LaunchedEffect(Unit) {

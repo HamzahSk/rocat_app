@@ -10,6 +10,7 @@ import tachiyomi.domain.entries.manga.model.Manga
 import tachiyomi.domain.library.anime.model.AnimeLibrarySort
 import tachiyomi.domain.library.manga.model.MangaLibrarySort
 import tachiyomi.domain.library.model.LibraryDisplayMode
+import tachiyomi.domain.library.novel.model.NovelLibrarySort
 
 class LibraryPreferences(
     private val preferenceStore: PreferenceStore,
@@ -34,6 +35,13 @@ class LibraryPreferences(
         AnimeLibrarySort.default,
         AnimeLibrarySort.Serializer::serialize,
         AnimeLibrarySort.Serializer::deserialize,
+    )
+
+    fun novelSortingMode() = preferenceStore.getObject(
+        "novellib_sorting_mode",
+        NovelLibrarySort.default,
+        NovelLibrarySort.Serializer::serialize,
+        NovelLibrarySort.Serializer::deserialize,
     )
 
     fun lastUpdatedTimestamp() = preferenceStore.getLong(Preference.appStateKey("library_update_last_timestamp"), 0L)
@@ -96,6 +104,7 @@ class LibraryPreferences(
 
     fun randomAnimeSortSeed() = preferenceStore.getInt("library_random_anime_sort_seed", 0)
     fun randomMangaSortSeed() = preferenceStore.getInt("library_random_manga_sort_seed", 0)
+    fun randomNovelSortSeed() = preferenceStore.getInt("library_random_novel_sort_seed", 0)
 
     // Mixture Columns
 
@@ -155,6 +164,7 @@ class LibraryPreferences(
 
     fun lastUsedAnimeCategory() = preferenceStore.getInt(Preference.appStateKey("last_used_anime_category"), 0)
     fun lastUsedMangaCategory() = preferenceStore.getInt(Preference.appStateKey("last_used_category"), 0)
+    fun lastUsedNovelCategory() = preferenceStore.getInt(Preference.appStateKey("last_used_novel_category"), 0)
 
     fun animeUpdateCategories() =
         preferenceStore.getStringSet(LIBRARY_UPDATE_ANIME_CATEGORIES_PREF_KEY, emptySet())

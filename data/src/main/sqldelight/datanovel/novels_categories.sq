@@ -22,3 +22,27 @@ VALUES (:novelId, :categoryId);
 deleteNovelCategoryByNovelId:
 DELETE FROM novels_categories
 WHERE novel_id = :novelId;
+
+getCategoriesByNovelId:
+SELECT
+C._id AS id,
+C.name,
+C.sort AS `order`,
+C.flags,
+C.hidden
+FROM categories C
+JOIN novels_categories NC
+ON C._id = NC.category_id
+WHERE NC.novel_id = :novelId;
+
+getVisibleCategoriesByNovelId:
+SELECT
+C._id AS id,
+C.name,
+C.sort AS `order`,
+C.flags,
+C.hidden
+FROM categories C
+JOIN novels_categories NC
+ON C._id = NC.category_id
+WHERE NC.novel_id = :novelId AND C.hidden = 0;

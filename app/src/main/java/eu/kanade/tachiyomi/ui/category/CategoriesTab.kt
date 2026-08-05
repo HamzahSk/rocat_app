@@ -19,6 +19,9 @@ import eu.kanade.tachiyomi.ui.category.anime.animeCategoryTab
 import eu.kanade.tachiyomi.ui.category.manga.MangaCategoryEvent
 import eu.kanade.tachiyomi.ui.category.manga.MangaCategoryScreenModel
 import eu.kanade.tachiyomi.ui.category.manga.mangaCategoryTab
+import eu.kanade.tachiyomi.ui.category.novel.NovelCategoryEvent
+import eu.kanade.tachiyomi.ui.category.novel.NovelCategoryScreenModel
+import eu.kanade.tachiyomi.ui.category.novel.novelCategoryTab
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.collections.immutable.persistentListOf
@@ -44,9 +47,14 @@ data object CategoriesTab : Tab {
         }
 
     private val switchToMangaCategoryTabChannel = Channel<Unit>(1, BufferOverflow.DROP_OLDEST)
+    private val switchToNovelCategoryTabChannel = Channel<Unit>(1, BufferOverflow.DROP_OLDEST)
 
     fun showMangaCategory() {
         switchToMangaCategoryTabChannel.trySend(Unit)
+    }
+
+    fun showNovelCategory() {
+        switchToNovelCategoryTabChannel.trySend(Unit)
     }
 
     @Composable
@@ -55,10 +63,12 @@ data object CategoriesTab : Tab {
 
         val animeCategoryScreenModel = rememberScreenModel { AnimeCategoryScreenModel() }
         val mangaCategoryScreenModel = rememberScreenModel { MangaCategoryScreenModel() }
+        val novelCategoryScreenModel = rememberScreenModel { NovelCategoryScreenModel() }
 
         val tabs = persistentListOf(
             animeCategoryTab(),
             mangaCategoryTab(),
+            novelCategoryTab(),
         )
 
         val state = rememberPagerState { tabs.size }
@@ -71,6 +81,8 @@ data object CategoriesTab : Tab {
         LaunchedEffect(Unit) {
             switchToMangaCategoryTabChannel.receiveAsFlow()
                 .collectLatest { state.scrollToPage(1) }
+            switchToNovelCategoryTabChannel.receiveAsFlow()
+                .collectLatest { state.scrollToPage(2) }
         }
 
         LaunchedEffect(Unit) {
@@ -85,6 +97,11 @@ data object CategoriesTab : Tab {
             }
             animeCategoryScreenModel.events.collectLatest { event ->
                 if (event is AnimeCategoryEvent.LocalizedMessage) {
+                    context.toast(event.stringRes)
+                }
+            }
+            novelCategoryScreenModel.events.collectLatest { event ->
+                if (event is NovelCategoryEvent.LocalizedMessage) {
                     context.toast(event.stringRes)
                 }
             }

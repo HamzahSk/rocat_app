@@ -36,6 +36,7 @@ import eu.kanade.tachiyomi.data.coil.BufferedSourceFetcher
 import eu.kanade.tachiyomi.data.coil.MangaCoverFetcher
 import eu.kanade.tachiyomi.data.coil.MangaCoverKeyer
 import eu.kanade.tachiyomi.data.coil.MangaKeyer
+import eu.kanade.tachiyomi.data.coil.NovelCoverFetcher
 import eu.kanade.tachiyomi.data.coil.TachiyomiImageDecoder
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.di.AppModule
@@ -193,6 +194,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
                 add(MangaCoverFetcher.MangaCoverFactory(callFactoryLazy))
                 add(AnimeImageFetcher.AnimeFactory(callFactoryLazy))
                 add(AnimeImageFetcher.AnimeCoverFactory(callFactoryLazy))
+                add(NovelCoverFetcher.NovelCoverFactory(callFactoryLazy))
                 // Keyer
                 add(AnimeKeyer())
                 add(MangaKeyer())

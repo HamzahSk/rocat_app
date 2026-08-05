@@ -55,12 +55,14 @@ class SourcePreferences(
 
     fun disabledAnimeSources() = preferenceStore.getStringSet("hidden_anime_catalogues", emptySet())
     fun disabledMangaSources() = preferenceStore.getStringSet("hidden_catalogues", emptySet())
+    fun disabledNovelSources() = preferenceStore.getStringSet("hidden_novel_catalogues", emptySet())
 
     fun incognitoAnimeExtensions() = preferenceStore.getStringSet("incognito_anime_extensions", emptySet())
     fun incognitoMangaExtensions() = preferenceStore.getStringSet("incognito_manga_extensions", emptySet())
 
     fun pinnedAnimeSources() = preferenceStore.getStringSet("pinned_anime_catalogues", emptySet())
     fun pinnedMangaSources() = preferenceStore.getStringSet("pinned_catalogues", emptySet())
+    fun pinnedNovelSources() = preferenceStore.getStringSet("pinned_novel_catalogues", emptySet())
 
     fun lastUsedAnimeSource() = preferenceStore.getLong(
         Preference.appStateKey("last_anime_catalogue_source"),
@@ -68,6 +70,10 @@ class SourcePreferences(
     )
     fun lastUsedMangaSource() = preferenceStore.getLong(
         Preference.appStateKey("last_catalogue_source"),
+        -1,
+    )
+    fun lastUsedNovelSource() = preferenceStore.getLong(
+        Preference.appStateKey("last_novel_catalogue_source"),
         -1,
     )
 

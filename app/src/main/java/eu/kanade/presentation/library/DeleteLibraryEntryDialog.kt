@@ -22,13 +22,18 @@ fun DeleteLibraryEntryDialog(
     onDismissRequest: () -> Unit,
     onConfirm: (Boolean, Boolean) -> Unit,
     isManga: Boolean,
+    isNovel: Boolean = false,
 ) {
     var list by remember {
         mutableStateOf(
             buildList<CheckboxState.State<StringResource>> {
-                val checkbox1 = if (isManga) AYMR.strings.manga_from_library else AYMR.strings.anime_from_library
+                val checkbox1 = when {
+                    isNovel -> AYMR.strings.novel_from_library
+                    isManga -> AYMR.strings.manga_from_library
+                    else -> AYMR.strings.anime_from_library
+                }
                 add(CheckboxState.State.None(checkbox1))
-                if (!containsLocalEntry) {
+                if (!containsLocalEntry && !isNovel) {
                     val checkbox2 = if (isManga) MR.strings.downloaded_chapters else AYMR.strings.downloaded_episodes
                     add(CheckboxState.State.None(checkbox2))
                 }

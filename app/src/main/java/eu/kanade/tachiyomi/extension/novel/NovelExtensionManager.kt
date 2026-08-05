@@ -1,7 +1,9 @@
 package eu.kanade.tachiyomi.extension.novel
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import eu.kanade.tachiyomi.extension.novel.model.NovelExtension
 import eu.kanade.tachiyomi.extension.novel.model.NovelLoadResult
 import eu.kanade.tachiyomi.extension.novel.util.NovelExtensionLoader
@@ -76,6 +78,60 @@ class NovelExtensionManager(
     fun getSourceData(id: Long) = availableExtensionsSourcesData[id]
 
     /**
+     * Reloads the installed and untrusted extensions from the packages present on the device.
+     */
+    fun reload() {
+        initExtensions()
+    }
+
+    /**
+     * Trusts the given untrusted extension: reloads it from the package manager so that it gets
+     * registered as an installed extension.
+     */
+    suspend fun trust(extension: NovelExtension.Untrusted) {
+        untrustedExtensionsMapFlow.value -= extension.pkgName
+        reload()
+    }
+
+    /**
+     * Uninstalls the extension that matches the given package name.
+     *
+     * @param extension The extension to uninstall.
+     */
+    fun uninstallExtension(extension: NovelExtension) {
+        val pkgName = extension.pkgName
+        if (isPackageInstalled(pkgName)) {
+            val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, "package:$pkgName".toUri())
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } else {
+            NovelExtensionLoader.uninstallPrivateExtension(context, pkgName)
+            unregisterExtension(pkgName)
+        }
+    }
+
+    private fun isPackageInstalled(pkgName: String): Boolean {
+        return try {
+            context.packageManager.getPackageInfo(pkgName, 0)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun String.toUri() = Uri.parse(this)
+
+    /**
+     * Unregisters the extension in this manager given its package name.
+     *
+     * @param pkgName The package name of the uninstalled application.
+     */
+    fun unregisterExtension(pkgName: String) {
+        installedExtensionsMapFlow.value -= pkgName
+        untrustedExtensionsMapFlow.value -= pkgName
+    }
+
+    /**
      * Loads and registers the installed extensions.
      */
     private fun initExtensions() {
@@ -94,16 +150,6 @@ class NovelExtensionManager(
 
     fun setAvailableExtensions(extensions: List<NovelExtension.Available>) {
         setupAvailableExtensionsSourcesDataMap(extensions)
-    }
-
-    /**
-     * Unregisters the extension in this and the source managers given its package name.
-     *
-     * @param pkgName The package name of the uninstalled application.
-     */
-    fun unregisterExtension(pkgName: String) {
-        installedExtensionsMapFlow.value -= pkgName
-        untrustedExtensionsMapFlow.value -= pkgName
     }
 
     private operator fun <T : NovelExtension> Map<String, T>.plus(extension: T) = plus(extension.pkgName to extension)

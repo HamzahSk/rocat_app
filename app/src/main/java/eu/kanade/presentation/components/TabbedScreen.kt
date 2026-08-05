@@ -42,7 +42,8 @@ fun TabbedScreen(
     scrollable: Boolean = false,
     animeSearchQuery: String? = null,
     onChangeAnimeSearchQuery: (String?) -> Unit = {},
-
+    novelSearchQuery: String? = null,
+    onChangeNovelSearchQuery: (String?) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -53,13 +54,15 @@ fun TabbedScreen(
                 val tab = tabs[state.currentPage]
                 val searchEnabled = tab.searchEnabled
 
-                val actualQuery = when (state.currentPage % 2) {
+                val actualQuery = when (state.currentPage % 3) {
                     1 -> mangaSearchQuery // History and Browse
+                    2 -> novelSearchQuery
                     else -> animeSearchQuery
                 }
 
-                val actualOnChange = when (state.currentPage % 2) {
+                val actualOnChange = when (state.currentPage % 3) {
                     1 -> onChangeMangaSearchQuery // History and Browse
+                    2 -> onChangeNovelSearchQuery
                     else -> onChangeAnimeSearchQuery
                 }
 
