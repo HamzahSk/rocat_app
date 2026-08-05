@@ -1,7 +1,7 @@
 name: Test Build (arm64-v8a)
 
 on:
-  workflow_dispatch: # Agar bisa di-trigger manual via tombol di GitHub
+  workflow_dispatch:
   push:
     branches:
       - '*'
@@ -16,6 +16,10 @@ jobs:
   build-test:
     name: Build Test APK (arm64-v8a)
     runs-on: ubuntu-latest
+    
+    # 1. Pindahkan pengecekan ketersediaan secret ke variabel env di level job
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.SIGNING_KEY != '' }}
 
     steps:
       - name: Clone repo
@@ -33,9 +37,9 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease -Penable-updater
 
-      # Step Signing (akan jalan jika Secrets ketersediaan Keystore terisi)
+      # 2. Gunakan variabel env untuk kondisi if
       - name: Sign arm64-v8a APK
-        if: ${{ secrets.SIGNING_KEY != '' }}
+        if: env.HAS_SIGNING_KEY == 'true'
         uses: r0adkll/sign-android-release@f30bdd30588842ac76044ecdbd4b6d0e3e813478
         with:
           releaseDirectory: app/build/outputs/apk/release
@@ -46,7 +50,6 @@ jobs:
         env:
           BUILD_TOOLS_VERSION: '35.0.1'
 
-      # Mengisolasi dan menyiapkan hanya APK arm64-v8a
       - name: Prepare arm64 APK Artifact
         run: |
           mkdir -p dist
@@ -61,10 +64,9 @@ jobs:
             exit 1
           fi
 
-      # Upload hasil ke Artifacts GitHub Actions
       - name: Upload arm64-v8a APK
         uses: actions/upload-artifact@v4
         with:
           name: aniyomi-test-arm64-v8a-${{ github.sha }}
           path: dist/*.apk
-          retention-days: 7 # Artifact tersimpan selama 7 hari
+          retention-days: 7
