@@ -1,37 +1,41 @@
 # Role
-Kamu adalah seorang Senior Android Developer dan Software Architect yang ahli dalam bahasa Kotlin dan manajemen database lokal (SQLDelight/Room). Kamu sangat familiar dengan basis kode aplikasi open-source seperti Tachiyomi dan Aniyomi (yang saat ini mendukung Anime dan Manga). 
+Kamu adalah seorang Senior Android Developer dan Software Architect yang ahli dalam bahasa Kotlin, arsitektur Clean/MVVM, dan Jetpack Compose/XML. Kamu sangat familiar dengan basis kode aplikasi open-source Aniyomi dan Tachiyomi. Kamu memiliki spesialisasi dalam mem-*porting* kode TypeScript ke Kotlin dan merancang UI yang efisien untuk performa tinggi.
 
 # Memory
 1. **BACA ATURAN MEMORI:**
    - Buka dan baca file `memory_prompt.md` untuk memahami seluruh protokol manajemen memori, pembatasan token, dan aturan penulisan log secara ketat.
 
 # Task
-Ini adalah **Fase 1** dari proyek besar untuk mengintegrasikan fitur **Novel** ke dalam Aniyomi. Aplikasi ini nantinya akan mendukung 3 tipe media: Anime, Manga, dan Novel. 
-Fokus utama dan **SATU-SATUNYA** tugasmu pada *prompt* ini adalah memodifikasi dan membangun arsitektur *database* (SQLDelight/Room) agar mendukung entitas Novel. **JANGAN** membuat UI, Reader, atau logika Network/Scraper pada tahap ini.
+Ini adalah **Fase 2** dari proyek integrasi fitur **Novel** ke dalam Aniyomi (Fase 1: Database sudah diselesaikan). 
+Tugasmu sekarang adalah membuat logika *Source/Extension* untuk Novel dan membangun antarmuka pembaca (*Novel Reader*). Logika *parsing* dan *scraping* harus merujuk pada kode TypeScript yang ada di dalam folder `NovelApp`.
 
 # Requirements
-1. **Unified Database:** Modifikasi skema database agar mendukung tipe media baru. Jika saat ini hanya ada flag/enum/tipe untuk `ANIME` dan `MANGA`, tambahkan dukungan untuk `NOVEL`. 
-2. **Backward Compatibility:** Semua modifikasi tabel tidak boleh merusak data Library pengguna yang sudah ada. Migrasi database (*database migration*) wajib ditulis dengan sangat hati-hati.
-3. **Pemisahan Kategori:** Skema harus bisa membedakan riwayat baca (*history*), pembaruan (*updates*), dan perpustakaan (*library*) antara Anime, Manga, dan Novel dengan efisien.
+1. **Porting TypeScript ke Kotlin:** Buka folder `NovelApp` dan pelajari bagaimana aplikasi tersebut melakukan *fetch* dan *parse* data novel (baik daftar novel maupun isi *chapter*). Terjemahkan logika tersebut ke dalam Kotlin menggunakan arsitektur *Source* Aniyomi (menggunakan OkHttp/JSoup).
+2. **Novel Source Architecture:** Buat *base class* atau *interface* untuk `NovelSource` yang sejajar dengan `AnimeSource` dan `MangaSource`. Pastikan sistem bisa membedakan *source* teks dengan gambar/video.
+3. **Text-Based Reader UI:** Buat layar pembaca (*reader*) yang khusus didesain untuk teks, bukan gambar. Fitur wajib di *reader*:
+   - Pengaturan *Font Size* (Ukuran teks).
+   - Pengaturan *Line Spacing* (Jarak antar baris).
+   - Pengaturan Tema Latar/Warna Teks (misal: *Dark mode, Light mode, Sepia*).
+   - Scroll yang mulus (*continuous scroll* atau *pagination*) untuk teks berukuran masif.
 
 ---
 
 # Implementation Steps
 
-### Step 1: Database Schema & Entity Updates
-- Cek struktur tabel utama saat ini (seperti `manga`, `anime`, `history`, `chapter`, `episode`).
-- Putuskan pendekatan terbaik: apakah menambahkan tabel baru khusus `novel` dan `novel_chapter`, atau menggabungkannya ke tabel yang sudah ada (misalnya mengubah nama tabel menjadi `library_item` dengan kolom `item_type = 'NOVEL'`).
-- Tuliskan *file* skema yang baru (contoh: `.sq` file jika menggunakan SQLDelight atau *data class* beranotasi `@Entity` jika menggunakan Room).
+### Step 1: Base Source & Porting Parser
+- Buat *interface* `NovelSource` (mirip dengan `HttpSource` atau `ParsedHttpSource` di Tachiyomi) yang memiliki fungsi `fetchPopularNovel`, `fetchNovelDetails`, dan `fetchChapterList`.
+- Translasi file TypeScript *parser* dari folder `NovelApp` menjadi class Kotlin yang mengimplementasikan `NovelSource` tersebut.
 
-### Step 2: Database Migration Script
-- Buat skrip migrasi *database* (misalnya dari versi N ke N+1).
-- Pastikan ada logika SQL `ALTER TABLE` yang tepat jika kamu menambahkan kolom baru ke tabel yang sudah *existing*.
+### Step 2: Domain & Data Layer Integration
+- Hubungkan `NovelSource` yang baru dibuat dengan *Repository* dan *Database* (yang sudah dikerjakan di Fase 1).
+- Pastikan logika *Update History* dan penanda *Chapter Read/Unread* berfungsi normal saat data di-*fetch* dari *source*.
 
-### Step 3: DAO / Database Queries (CRUD)
-- Tulis *query* dasar (Insert, Update, Delete, Select) untuk mengelola entitas Novel di *database*.
-- Buat *query* untuk mengambil daftar Novel berdasarkan kategori (*Library*) dan mengambil daftar *chapter* sebuah Novel.
+### Step 3: Novel Reader Presentation
+- Buat `NovelReaderActivity` atau Compose/Fragment. 
+- Implementasikan UI *settings* (*bottom sheet* atau menu) untuk mengatur ukuran huruf dan warna tema.
+- Gunakan komponen UI yang efisien (seperti `LazyColumn` jika pakai Compose atau `RecyclerView` jika pakai XML) agar teks panjang tidak menyebabkan *lag*.
 
 ### Step 4: Testing & Build (WAJIB)
-1. **Formatting:** Jalankan `./gradlew spotlessApply` untuk merapikan format kode Kotlin dan SQL.
-2. **Build Check:** Jalankan `./gradlew assembleDebug` (atau *task build* yang relevan) dan pastikan **BUILD SUCCESSFUL**.
-3. **Migration Test:** Buat *unit test* sederhana untuk menguji apakah migrasi *database* dari versi lama ke versi baru berhasil tanpa menghilangkan *dummy data* Manga/Anime.
+1. **Formatting:** Jalankan `./gradlew spotlessApply` untuk merapikan format kode Kotlin.
+2. **Build Check:** Jalankan `./gradlew assembleDebug` dan pastikan **BUILD SUCCESSFUL**.
+3. **Performance Test (Reader):** Masukkan data *dummy string* berupa teks dengan panjang >50.000 kata ke dalam `NovelReader`. Pastikan aplikasi tidak *freeze* (*ANR*) saat merender teks, mengganti ukuran *font*, atau saat *scrolling*.
