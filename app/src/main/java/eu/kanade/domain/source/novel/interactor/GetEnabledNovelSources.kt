@@ -8,6 +8,7 @@ import tachiyomi.domain.source.manga.model.Pin
 import tachiyomi.domain.source.manga.model.Pins
 import tachiyomi.domain.source.novel.model.Source
 import tachiyomi.domain.source.novel.repository.NovelSourceRepository
+import tachiyomi.source.local.entries.novel.LocalNovelSource
 
 class GetEnabledNovelSources(
     private val repository: NovelSourceRepository,
@@ -25,7 +26,7 @@ class GetEnabledNovelSources(
             repository.getNovelSources(),
         ) { pinnedSourceIds, enabledLanguages, (disabledSources, lastUsedSource), sources ->
             sources
-                .filter { it.lang in enabledLanguages }
+                .filter { it.lang in enabledLanguages || it.id == LocalNovelSource.ID }
                 .filterNot { it.id.toString() in disabledSources }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
                 .flatMap {

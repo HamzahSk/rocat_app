@@ -4,11 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -31,41 +34,47 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import eu.kanade.tachiyomi.novelsource.NovelSource
-import eu.kanade.tachiyomi.novelsource.model.SNovelChapter
+import coil3.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.util.view.setComposeContent
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import logcat.LogPriority
-import tachiyomi.core.common.util.system.logcat
-import tachiyomi.domain.source.novel.service.NovelSourceManager
+import kotlinx.coroutines.flow.distinctUntilChanged
 import tachiyomi.presentation.core.util.collectAsState
-import uy.kohesive.injekt.injectLazy
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
- * Text based novel reader. Renders the chapter text returned by a [NovelSource] inside a
- * [LazyColumn] so arbitrarily long chapters stay scrollable without blocking the main thread.
+ * Text based novel reader. Renders the chapter content returned by a [NovelReaderViewModel] inside
+ * a [LazyColumn] so arbitrarily long chapters stay scrollable without blocking the main thread.
  *
- * Supports font size, line spacing and light/dark/sepia themes via [NovelReaderPreferences].
+ * Supports inline EPUB illustrations (as [NovelChapterContent.Image]), font size, line spacing and
+ * light/dark/sepia themes via [NovelReaderPreferences]. Reading progress is written back to the
+ * local database by the [NovelReaderViewModel].
  */
 class NovelReaderActivity : BaseActivity() {
 
-    private val sourceManager: NovelSourceManager by injectLazy()
-    private val readerPreferences: NovelReaderPreferences by injectLazy()
+    private val readerPreferences: NovelReaderPreferences by lazy {
+        Injekt.get<NovelReaderPreferences>()
+    }
+
+    private val viewModel by viewModels<NovelReaderViewModel>(
+        factoryProducer = {
+            val sourceId = intent.getLongExtra(EXTRA_SOURCE_ID, -1L)
+            val novelId = intent.getLongExtra(EXTRA_NOVEL_ID, -1L)
+            val chapterUrl = intent.getStringExtra(EXTRA_CHAPTER_URL).orEmpty()
+            val chapterName = intent.getStringExtra(EXTRA_CHAPTER_NAME).orEmpty()
+            NovelReaderViewModelFactory(sourceId, novelId, chapterUrl, chapterName)
+        },
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val sourceId = intent.getLongExtra(EXTRA_SOURCE_ID, -1L)
-        val chapterUrl = intent.getStringExtra(EXTRA_CHAPTER_URL).orEmpty()
-        val chapterName = intent.getStringExtra(EXTRA_CHAPTER_NAME).orEmpty()
 
         if (readerPreferences.keepScreenOn().get()) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -73,11 +82,7 @@ class NovelReaderActivity : BaseActivity() {
 
         setComposeContent {
             NovelReaderScreen(
-                sourceId = sourceId,
-                chapterUrl = chapterUrl,
-                chapterName = chapterName,
-                loadChapter = { source, chapter -> source.getChapterText(chapter) },
-                sourceManager = sourceManager,
+                viewModel = viewModel,
                 readerPreferences = readerPreferences,
             )
         }
@@ -85,17 +90,20 @@ class NovelReaderActivity : BaseActivity() {
 
     companion object {
         private const val EXTRA_SOURCE_ID = "source_id"
+        private const val EXTRA_NOVEL_ID = "novel_id"
         private const val EXTRA_CHAPTER_URL = "chapter_url"
         private const val EXTRA_CHAPTER_NAME = "chapter_name"
 
         fun newIntent(
             context: Context,
             sourceId: Long,
+            novelId: Long,
             chapterUrl: String,
             chapterName: String,
         ): Intent {
             return Intent(context, NovelReaderActivity::class.java).apply {
                 putExtra(EXTRA_SOURCE_ID, sourceId)
+                putExtra(EXTRA_NOVEL_ID, novelId)
                 putExtra(EXTRA_CHAPTER_URL, chapterUrl)
                 putExtra(EXTRA_CHAPTER_NAME, chapterName)
             }
@@ -103,44 +111,27 @@ class NovelReaderActivity : BaseActivity() {
     }
 }
 
-private typealias ChapterTextLoader = suspend (NovelSource, SNovelChapter) -> String
-
 @Composable
 private fun NovelReaderScreen(
-    sourceId: Long,
-    chapterUrl: String,
-    chapterName: String,
-    loadChapter: ChapterTextLoader,
-    sourceManager: NovelSourceManager,
+    viewModel: NovelReaderViewModel,
     readerPreferences: NovelReaderPreferences,
 ) {
     val theme by readerPreferences.theme().collectAsState()
     val fontSize by readerPreferences.fontSize().collectAsState()
     val lineSpacing by readerPreferences.lineSpacing().collectAsState()
 
-    var paragraphs by remember { mutableStateOf<List<String>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val uiState = viewModel.uiState
     var showSettings by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(sourceId, chapterUrl) {
-        paragraphs = null
-        error = null
-        val source = sourceManager.get(sourceId)
-        if (source == null) {
-            error = "Source is not available"
-            return@LaunchedEffect
-        }
-        val chapter = SNovelChapter.create().apply {
-            url = chapterUrl
-            name = chapterName
-        }
-        try {
-            val html = withContext(Dispatchers.Default) { loadChapter(source, chapter) }
-            paragraphs = withContext(Dispatchers.Default) { ChapterTextExtractor.extract(html) }
-        } catch (e: Exception) {
-            logcat(LogPriority.ERROR, e)
-            error = e.message ?: "Failed to load chapter"
-        }
+    LaunchedEffect(Unit) {
+        viewModel.loadChapter()
+    }
+
+    LaunchedEffect(Unit) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { viewModel.onScrolled(it) }
     }
 
     Box(
@@ -150,19 +141,19 @@ private fun NovelReaderScreen(
             .clickable { showSettings = !showSettings },
     ) {
         when {
-            error != null -> {
+            uiState.error != null -> {
                 Column(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(text = error!!, color = theme.textColor)
+                    Text(text = uiState.error, color = theme.textColor)
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { showSettings = false }) {
+                    Button(onClick = { viewModel.loadChapter() }) {
                         Text(text = "Retry")
                     }
                 }
             }
-            paragraphs == null -> {
+            uiState.isLoading || uiState.blocks == null -> {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = theme.textColor,
@@ -174,21 +165,35 @@ private fun NovelReaderScreen(
                         .fillMaxSize()
                         .statusBarsPadding()
                         .navigationBarsPadding(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    state = listState,
+                    contentPadding = PaddingValues(
                         horizontal = 20.dp,
                         vertical = 16.dp,
                     ),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
-                    itemsIndexed(paragraphs!!, key = { index, _ -> index }) { _, paragraph ->
-                        Text(
-                            text = paragraph,
-                            color = theme.textColor,
-                            style = TextStyle(
-                                fontSize = fontSize.sp,
-                                lineHeight = (fontSize * lineSpacing).sp,
-                            ),
-                        )
+                    itemsIndexed(uiState.blocks, key = { index, _ -> index }) { _, block ->
+                        when (block) {
+                            is NovelChapterContent.Text -> {
+                                Text(
+                                    text = block.text,
+                                    color = theme.textColor,
+                                    style = TextStyle(
+                                        fontSize = fontSize.sp,
+                                        lineHeight = (fontSize * lineSpacing).sp,
+                                    ),
+                                )
+                            }
+                            is NovelChapterContent.Image -> {
+                                AsyncImage(
+                                    model = block.bytes,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }

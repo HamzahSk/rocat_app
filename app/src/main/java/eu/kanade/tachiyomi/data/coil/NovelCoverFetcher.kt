@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.data.coil
 
+import androidx.core.net.toUri
 import coil3.ImageLoader
 import coil3.decode.DataSource
 import coil3.decode.ImageSource
@@ -7,6 +8,7 @@ import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
+import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.novelsource.online.HttpNovelSource
 import okhttp3.CacheControl
@@ -15,16 +17,21 @@ import okhttp3.Request
 import okhttp3.Response
 import okio.FileSystem
 import okio.IOException
+import okio.Path.Companion.toOkioPath
+import okio.buffer
 import okio.source
 import tachiyomi.domain.entries.novel.model.NovelCover
 import tachiyomi.domain.source.novel.service.NovelSourceManager
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 
 /**
  * A [Fetcher] that fetches cover image for [NovelCover].
  *
  * It uses [NovelCover.url] and relies on Coil's [coil3.disk.DiskCache] for
  * disk caching, mirroring the behaviour of [MangaCoverFetcher] for library items.
+ * Local novels expose their cover as a `content://` or `file://` URI which is resolved
+ * directly instead of going through the network.
  */
 class NovelCoverFetcher(
     private val url: String?,
@@ -40,7 +47,50 @@ class NovelCoverFetcher(
 
     override suspend fun fetch(): FetchResult {
         if (url.isNullOrEmpty()) error("No cover specified")
-        return httpLoader()
+        return when (getResourceType(url)) {
+            Type.URL -> httpLoader()
+            Type.File -> fileLoader(File(url.substringAfter("file://")))
+            Type.URI -> uniFileLoader(url)
+            null -> error("Invalid image")
+        }
+    }
+
+    private fun uniFileLoader(urlString: String): FetchResult {
+        val uniFile = UniFile.fromUri(options.context, urlString.toUri())!!
+        val stream = uniFile.openInputStream().source().buffer()
+        return SourceFetchResult(
+            source = ImageSource(source = stream, fileSystem = FileSystem.SYSTEM),
+            mimeType = "image/*",
+            dataSource = DataSource.DISK,
+        )
+    }
+
+    private fun fileLoader(file: File): FetchResult {
+        return SourceFetchResult(
+            source = ImageSource(
+                file = file.toOkioPath(),
+                fileSystem = FileSystem.SYSTEM,
+                diskCacheKey = diskCacheKey,
+            ),
+            mimeType = "image/*",
+            dataSource = DataSource.DISK,
+        )
+    }
+
+    private fun getResourceType(cover: String?): Type? {
+        return when {
+            cover.isNullOrEmpty() -> null
+            cover.startsWith("http", true) -> Type.URL
+            cover.startsWith("/") || cover.startsWith("file://") -> Type.File
+            cover.startsWith("content") -> Type.URI
+            else -> null
+        }
+    }
+
+    private enum class Type {
+        File,
+        URL,
+        URI,
     }
 
     private suspend fun httpLoader(): FetchResult {

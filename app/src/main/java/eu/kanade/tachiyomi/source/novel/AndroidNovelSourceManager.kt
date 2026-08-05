@@ -19,11 +19,14 @@ import kotlinx.coroutines.runBlocking
 import tachiyomi.domain.source.novel.model.StubNovelSource
 import tachiyomi.domain.source.novel.repository.NovelStubSourceRepository
 import tachiyomi.domain.source.novel.service.NovelSourceManager
+import tachiyomi.source.local.entries.novel.LocalNovelSource
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Android implementation of [NovelSourceManager]. Seeds the built-in sample and Royal Road
- * sources and registers any novel sources shipped inside installed extension packages.
+ * Android implementation of [NovelSourceManager]. Seeds the built-in sample, Royal Road and
+ * local EPUB sources and registers any novel sources shipped inside installed extension packages.
  */
 class AndroidNovelSourceManager(
     private val context: Context,
@@ -52,6 +55,11 @@ class AndroidNovelSourceManager(
                         mapOf(
                             SampleNovelSource.SAMPLE_SOURCE_ID to SampleNovelSource(),
                             RoyalRoadNovelSource().id to RoyalRoadNovelSource(),
+                            LocalNovelSource.ID to LocalNovelSource(
+                                context,
+                                Injekt.get(),
+                                Injekt.get(),
+                            ),
                         ),
                     )
                     extensions.forEach { extension ->

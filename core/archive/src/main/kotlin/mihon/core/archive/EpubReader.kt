@@ -34,6 +34,65 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
     }
 
     /**
+     * Returns the resolved zip paths of every spine page (XHTML document) in reading order.
+     */
+    fun getPages(): List<String> {
+        val ref = getPackageHref()
+        val doc = getPackageDocument(ref)
+        return getPagesFromDocument(doc).map { resolveZipPath(getParentDirectory(ref), it) }
+    }
+
+    /**
+     * Returns the resolved zip path for a spine page href.
+     */
+    fun getPagePath(page: String): String {
+        val ref = getPackageHref()
+        return resolveZipPath(getParentDirectory(ref), page)
+    }
+
+    /**
+     * Resolves a relative (or absolute) zip path against a base path, handling the path
+     * separator used by this epub.
+     */
+    fun resolveEntry(href: String, basePath: String): String {
+        return resolveZipPath(basePath, href)
+    }
+
+    /**
+     * Returns the resolved zip path of the cover image if the epub declares one, or null.
+     */
+    fun getCoverHref(): String? {
+        val ref = getPackageHref()
+        val doc = getPackageDocument(ref)
+
+        // EPUB 3 style: <meta property="cover"> or legacy <meta name="cover">
+        val coverId = doc.select("metadata > meta[property=cover], metadata > meta[name=cover]")
+            .firstOrNull()
+            ?.attr("content")
+        if (!coverId.isNullOrBlank()) {
+            doc.select("manifest > item[id=\"$coverId\"]").firstOrNull()?.attr("href")?.let {
+                return resolveZipPath(getParentDirectory(ref), it)
+            }
+        }
+
+        // EPUB 2 style: <item id="cover" href="cover.jpg" properties="cover-image" />
+        doc.select("manifest > item[properties*=cover-image]").firstOrNull()?.attr("href")?.let {
+            return resolveZipPath(getParentDirectory(ref), it)
+        }
+
+        // Fall back to the first image whose id or href hints at a cover
+        doc.select("manifest > item").firstOrNull {
+            val id = it.attr("id").lowercase()
+            val href = it.attr("href").lowercase()
+            id.startsWith("cover") || href.startsWith("cover")
+        }?.attr("href")?.let {
+            return resolveZipPath(getParentDirectory(ref), it)
+        }
+
+        return null
+    }
+
+    /**
      * Returns the path to the package document.
      */
     fun getPackageHref(): String {

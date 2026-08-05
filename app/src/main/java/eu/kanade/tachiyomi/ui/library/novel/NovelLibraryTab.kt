@@ -112,6 +112,7 @@ data object NovelLibraryTab : Tab {
                         NovelReaderActivity.newIntent(
                             context,
                             novel.novel.source,
+                            novel.novel.id,
                             chapter.url,
                             chapter.name,
                         ),
