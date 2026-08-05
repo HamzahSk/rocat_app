@@ -1,0 +1,71 @@
+name: OpenCode DB Fixer
+
+on:
+  workflow_dispatch:
+  
+  push:
+    paths:
+      - "prompt.md"
+
+permissions:
+  contents: read
+
+jobs:
+  opencode:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version-file: .github/.java-version
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install OpenCode
+        run: npm install -g opencode-ai
+
+      - name: Check OpenCode
+        run: |
+          opencode --version
+
+      - name: Run OpenCode
+        env:
+          # Pastikan kamu sudah menyimpan API Key di menu rahasia (Secrets) GitHub dengan nama MY_SECRET_API_KEY
+          OPENCODE_API_KEY: ${{ secrets.APIKEY_GLSDE5 }} 
+        run: |
+          # Menjalankan OpenCode dan menyimpan log terminal ke file
+          opencode run \
+            --model myprovider/model-pilihan-kamu \
+            --auto \
+            "$(cat prompt.md)" 2>&1 | tee ai-response-recap.txt || true
+
+      - name: Collect changed files and AI recap
+        run: |
+          git add -A
+
+          mkdir -p output_artifact
+
+          # Menyalin semua file proyek yang diubah oleh AI
+          for file in $(git diff --cached --name-only); do
+            if [ -f "$file" ]; then
+              mkdir -p "output_artifact/$(dirname "$file")"
+              cp "$file" "output_artifact/$file"
+            fi
+          done
+
+          # Memasukkan file recap respons AI ke dalam artifact baru
+          if [ -f ai-response-recap.txt ]; then
+            cp ai-response-recap.txt output_artifact/ai-response-recap.txt
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-output-${{ github.sha }}
+          path: output_artifact/
