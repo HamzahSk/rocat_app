@@ -4,12 +4,14 @@ import android.content.Context
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.novelsource.model.SNovel
 import eu.kanade.tachiyomi.novelsource.util.NovelChapterNumberParser
+import logcat.LogPriority
 import mihon.core.archive.EpubReader
 import mihon.core.archive.epubReader
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
+import tachiyomi.core.common.util.system.logcat
 import java.io.Closeable
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -88,7 +90,12 @@ class EpubParser(private val reader: EpubReader) : Closeable by reader {
         return pageHrefs.mapIndexed { index, href ->
             val resolved = resolvePagePath(href)
             val name = tocTitles[resolved] ?: "Chapter ${index + 1}"
-            val parsedNumber = NovelChapterNumberParser.parse("", name).toFloat()
+            val parsedNumber = try {
+                NovelChapterNumberParser.parse("", name).toFloat()
+            } catch (e: Throwable) {
+                logcat(LogPriority.ERROR, e)
+                -1f
+            }
             val number = if (parsedNumber > 0f) parsedNumber else (index + 1).toFloat()
             EpubChapter(
                 url = "$epubFileName/$resolved",

@@ -99,10 +99,11 @@ class SyncNovelChaptersWithSource(
                     chapter.chapterNumber,
                 )
             } catch (e: Throwable) {
-                logcat(LogPriority.WARN, e) {
-                    "Failed to parse chapter number for '${chapter.name}', using fallback"
-                }
-                chapter.chapterNumber ?: -1.0
+                // A failure here (e.g. the parser class is unavailable in the current classloader)
+                // must not abort the whole chapter sync, otherwise no chapter reaches the database
+                // and the chapter list is left empty. Fall back to the number provided by the source.
+                logcat(LogPriority.ERROR, e)
+                chapter.chapterNumber
             }
             chapter = chapter.copy(chapterNumber = chapterNumber)
 
