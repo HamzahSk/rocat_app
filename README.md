@@ -3,7 +3,7 @@
 <a href="https://aniyomi.org">
     <img src="./.github/assets/logo.png" alt="Aniyomi logo" title="Aniyomi logo" width="80"/>
 </a>
-
+ 
 # Aniyomi [App](#)
 
 ### Full-featured player and reader, based on ~~Tachiyomi~~ Mihon.

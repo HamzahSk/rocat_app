@@ -193,6 +193,10 @@
                 android:resource="@xml/s_pen_actions" />
         </activity>
         <activity
+            android:name=".ui.novelreader.NovelReaderActivity"
+            android:exported="false"
+            android:launchMode="singleTask" />
+        <activity
             android:name=".ui.player.PlayerActivity"
             android:autoRemoveFromRecents="true"
             android:configChanges="orientation|screenLayout|screenSize|smallestScreenSize|keyboardHidden|keyboard|uiMode"

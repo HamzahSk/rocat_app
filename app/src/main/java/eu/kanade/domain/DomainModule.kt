@@ -73,16 +73,21 @@ import tachiyomi.data.category.manga.MangaCategoryRepositoryImpl
 import tachiyomi.data.custombutton.CustomButtonRepositoryImpl
 import tachiyomi.data.entries.anime.AnimeRepositoryImpl
 import tachiyomi.data.entries.manga.MangaRepositoryImpl
+import tachiyomi.data.entries.novel.NovelRepositoryImpl
 import tachiyomi.data.history.anime.AnimeHistoryRepositoryImpl
 import tachiyomi.data.history.manga.MangaHistoryRepositoryImpl
+import tachiyomi.data.history.novel.NovelHistoryRepositoryImpl
 import tachiyomi.data.items.chapter.ChapterRepositoryImpl
 import tachiyomi.data.items.episode.EpisodeRepositoryImpl
+import tachiyomi.data.items.novelchapter.NovelChapterRepositoryImpl
 import tachiyomi.data.release.ReleaseServiceImpl
 import tachiyomi.data.searchhistory.SearchHistoryRepositoryImpl
 import tachiyomi.data.source.anime.AnimeSourceRepositoryImpl
 import tachiyomi.data.source.anime.AnimeStubSourceRepositoryImpl
 import tachiyomi.data.source.manga.MangaSourceRepositoryImpl
 import tachiyomi.data.source.manga.MangaStubSourceRepositoryImpl
+import tachiyomi.data.source.novel.NovelSourceRepositoryImpl
+import tachiyomi.data.source.novel.NovelStubSourceRepositoryImpl
 import tachiyomi.data.track.anime.AnimeTrackRepositoryImpl
 import tachiyomi.data.track.manga.MangaTrackRepositoryImpl
 import tachiyomi.data.updates.anime.AnimeUpdatesRepositoryImpl
@@ -143,6 +148,15 @@ import tachiyomi.domain.entries.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.entries.manga.interactor.ResetMangaViewerFlags
 import tachiyomi.domain.entries.manga.interactor.SetMangaChapterFlags
 import tachiyomi.domain.entries.manga.repository.MangaRepository
+import tachiyomi.domain.entries.novel.interactor.GetLibraryNovel
+import tachiyomi.domain.entries.novel.interactor.GetNovel
+import tachiyomi.domain.entries.novel.interactor.GetNovelByUrlAndSourceId
+import tachiyomi.domain.entries.novel.interactor.GetNovelFavorites
+import tachiyomi.domain.entries.novel.interactor.GetNovelWithChapters
+import tachiyomi.domain.entries.novel.interactor.NetworkToLocalNovel
+import tachiyomi.domain.entries.novel.interactor.NovelFetchInterval
+import tachiyomi.domain.entries.novel.interactor.UpdateNovel
+import tachiyomi.domain.entries.novel.repository.NovelRepository
 import tachiyomi.domain.history.anime.interactor.GetAnimeHistory
 import tachiyomi.domain.history.anime.interactor.GetNextEpisodes
 import tachiyomi.domain.history.anime.interactor.RemoveAnimeHistory
@@ -154,6 +168,7 @@ import tachiyomi.domain.history.manga.interactor.GetTotalReadDuration
 import tachiyomi.domain.history.manga.interactor.RemoveMangaHistory
 import tachiyomi.domain.history.manga.interactor.UpsertMangaHistory
 import tachiyomi.domain.history.manga.repository.MangaHistoryRepository
+import tachiyomi.domain.history.novel.repository.NovelHistoryRepository
 import tachiyomi.domain.items.chapter.interactor.GetChapter
 import tachiyomi.domain.items.chapter.interactor.GetChapterByUrlAndMangaId
 import tachiyomi.domain.items.chapter.interactor.GetChaptersByMangaId
@@ -168,6 +183,12 @@ import tachiyomi.domain.items.episode.interactor.SetAnimeDefaultEpisodeFlags
 import tachiyomi.domain.items.episode.interactor.ShouldUpdateDbEpisode
 import tachiyomi.domain.items.episode.interactor.UpdateEpisode
 import tachiyomi.domain.items.episode.repository.EpisodeRepository
+import tachiyomi.domain.items.novelchapter.interactor.GetChaptersByNovelId
+import tachiyomi.domain.items.novelchapter.interactor.GetNovelChapter
+import tachiyomi.domain.items.novelchapter.interactor.GetNovelChapterByUrlAndNovelId
+import tachiyomi.domain.items.novelchapter.interactor.ShouldUpdateDbNovelChapter
+import tachiyomi.domain.items.novelchapter.interactor.UpdateNovelChapter
+import tachiyomi.domain.items.novelchapter.repository.NovelChapterRepository
 import tachiyomi.domain.items.season.interactor.GetAnimeSeasonsByParentId
 import tachiyomi.domain.items.season.interactor.SetAnimeDefaultSeasonFlags
 import tachiyomi.domain.items.season.interactor.ShouldUpdateDbSeason
@@ -182,6 +203,8 @@ import tachiyomi.domain.source.manga.interactor.GetMangaSourcesWithNonLibraryMan
 import tachiyomi.domain.source.manga.interactor.GetRemoteManga
 import tachiyomi.domain.source.manga.repository.MangaSourceRepository
 import tachiyomi.domain.source.manga.repository.MangaStubSourceRepository
+import tachiyomi.domain.source.novel.repository.NovelSourceRepository
+import tachiyomi.domain.source.novel.repository.NovelStubSourceRepository
 import tachiyomi.domain.track.anime.interactor.DeleteAnimeTrack
 import tachiyomi.domain.track.anime.interactor.GetAnimeTracks
 import tachiyomi.domain.track.anime.interactor.GetTracksPerAnime
@@ -365,6 +388,28 @@ class DomainModule : InjektModule {
 
         addSingletonFactory<MangaSourceRepository> { MangaSourceRepositoryImpl(get(), get()) }
         addSingletonFactory<MangaStubSourceRepository> { MangaStubSourceRepositoryImpl(get()) }
+
+        addSingletonFactory<NovelRepository> { NovelRepositoryImpl(get()) }
+        addFactory { GetNovelFavorites(get()) }
+        addFactory { GetLibraryNovel(get()) }
+        addFactory { GetNovelWithChapters(get(), get()) }
+        addFactory { GetNovelByUrlAndSourceId(get()) }
+        addFactory { GetNovel(get()) }
+        addFactory { NovelFetchInterval(get()) }
+        addFactory { NetworkToLocalNovel(get()) }
+        addFactory { UpdateNovel(get(), get()) }
+
+        addSingletonFactory<NovelChapterRepository> { NovelChapterRepositoryImpl(get()) }
+        addFactory { GetChaptersByNovelId(get()) }
+        addFactory { GetNovelChapter(get()) }
+        addFactory { GetNovelChapterByUrlAndNovelId(get()) }
+        addFactory { UpdateNovelChapter(get()) }
+        addFactory { ShouldUpdateDbNovelChapter() }
+
+        addSingletonFactory<NovelHistoryRepository> { NovelHistoryRepositoryImpl(get()) }
+
+        addSingletonFactory<NovelSourceRepository> { NovelSourceRepositoryImpl(get(), get()) }
+        addSingletonFactory<NovelStubSourceRepository> { NovelStubSourceRepositoryImpl(get()) }
 
         addSingletonFactory<SearchHistoryRepository> { SearchHistoryRepositoryImpl(get(), get()) }
         addFactory { GetEnabledMangaSources(get(), get()) }

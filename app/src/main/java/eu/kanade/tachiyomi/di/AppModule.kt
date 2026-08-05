@@ -14,6 +14,7 @@ import dataanime.Animehistory
 import dataanime.Animes
 import datanovel.Novelhistory
 import datanovel.Novels
+import eu.kanade.domain.entries.novel.interactor.SyncNovelChaptersWithSource
 import eu.kanade.domain.track.anime.store.DelayedAnimeTrackingStore
 import eu.kanade.domain.track.manga.store.DelayedMangaTrackingStore
 import eu.kanade.tachiyomi.BuildConfig
@@ -31,10 +32,12 @@ import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
+import eu.kanade.tachiyomi.extension.novel.NovelExtensionManager
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.anime.AndroidAnimeSourceManager
 import eu.kanade.tachiyomi.source.manga.AndroidMangaSourceManager
+import eu.kanade.tachiyomi.source.novel.AndroidNovelSourceManager
 import eu.kanade.tachiyomi.ui.player.ExternalIntents
 import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import kotlinx.serialization.json.Json
@@ -55,6 +58,7 @@ import tachiyomi.data.handlers.manga.AndroidMangaDatabaseHandler
 import tachiyomi.data.handlers.manga.MangaDatabaseHandler
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.source.manga.service.MangaSourceManager
+import tachiyomi.domain.source.novel.service.NovelSourceManager
 import tachiyomi.domain.storage.service.StorageManager
 import tachiyomi.mi.data.AnimeDatabase
 import tachiyomi.source.local.entries.anime.LocalAnimeFetchTypeManager
@@ -66,6 +70,7 @@ import tachiyomi.source.local.io.anime.LocalAnimeSourceFileSystem
 import tachiyomi.source.local.io.manga.LocalMangaSourceFileSystem
 import uy.kohesive.injekt.api.InjektModule
 import uy.kohesive.injekt.api.InjektRegistrar
+import uy.kohesive.injekt.api.addFactory
 import uy.kohesive.injekt.api.addSingleton
 import uy.kohesive.injekt.api.addSingletonFactory
 import uy.kohesive.injekt.api.get
@@ -205,9 +210,11 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory<MangaSourceManager> { AndroidMangaSourceManager(app, get(), get()) }
         addSingletonFactory<AnimeSourceManager> { AndroidAnimeSourceManager(app, get(), get()) }
+        addSingletonFactory<NovelSourceManager> { AndroidNovelSourceManager(app, get(), get()) }
 
         addSingletonFactory { MangaExtensionManager(app) }
         addSingletonFactory { AnimeExtensionManager(app) }
+        addSingletonFactory { NovelExtensionManager(app) }
 
         addSingletonFactory { MangaDownloadProvider(app) }
         addSingletonFactory { MangaDownloadManager(app) }
@@ -220,6 +227,8 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory { TrackerManager(app) }
         addSingletonFactory { DelayedAnimeTrackingStore(app) }
         addSingletonFactory { DelayedMangaTrackingStore(app) }
+
+        addFactory { SyncNovelChaptersWithSource(get(), get(), get(), get(), get()) }
 
         addSingletonFactory { ImageSaver(app) }
 
@@ -247,6 +256,7 @@ class AppModule(val app: Application) : InjektModule {
 
             get<MangaSourceManager>()
             get<AnimeSourceManager>()
+            get<NovelSourceManager>()
 
             get<Database>()
             get<AnimeDatabase>()
