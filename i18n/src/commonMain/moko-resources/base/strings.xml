@@ -987,4 +987,19 @@
     <!-- Search history -->
     <string name="label_recent_searches">Recent searches</string>
     <string name="action_clear_search_history">Clear search history</string>
+
+    <!-- Novel reader -->
+    <string name="novel_reader_settings">Reader settings</string>
+    <string name="novel_reader_text_size">Text size</string>
+    <string name="novel_reader_font_family">Font family</string>
+    <string name="novel_reader_font_family_system">System</string>
+    <string name="novel_reader_font_family_serif">Serif</string>
+    <string name="novel_reader_font_family_sans_serif">Sans Serif</string>
+    <string name="novel_reader_font_family_monospace">Monospace</string>
+    <string name="novel_reader_line_spacing">Line spacing</string>
+    <string name="novel_reader_padding">Padding</string>
+    <string name="novel_reader_theme">Background theme</string>
+    <string name="novel_reader_theme_light">Light</string>
+    <string name="novel_reader_theme_dark">Dark</string>
+    <string name="novel_reader_theme_sepia">Sepia</string>
 </resources>

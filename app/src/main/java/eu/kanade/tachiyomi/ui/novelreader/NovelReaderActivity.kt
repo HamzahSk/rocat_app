@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,10 +23,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,13 +34,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.util.view.setComposeContent
 import kotlinx.coroutines.flow.distinctUntilChanged
+import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -53,9 +50,10 @@ import uy.kohesive.injekt.api.get
  * Text based novel reader. Renders the chapter content returned by a [NovelReaderViewModel] inside
  * a [LazyColumn] so arbitrarily long chapters stay scrollable without blocking the main thread.
  *
- * Supports inline EPUB illustrations (as [NovelChapterContent.Image]), font size, line spacing and
- * light/dark/sepia themes via [NovelReaderPreferences]. Reading progress is written back to the
- * local database by the [NovelReaderViewModel].
+ * Supports inline EPUB illustrations (as [NovelChapterContent.Image]), font size, font family,
+ * line spacing, page padding and light/dark/sepia themes via [NovelReaderPreferences]. All the
+ * settings can be tweaked in real time from a [NovelReaderSettingsSheet]. Reading progress is
+ * written back to the local database by the [NovelReaderViewModel].
  */
 class NovelReaderActivity : BaseActivity() {
 
@@ -118,7 +116,9 @@ private fun NovelReaderScreen(
 ) {
     val theme by readerPreferences.theme().collectAsState()
     val fontSize by readerPreferences.fontSize().collectAsState()
+    val fontFamily by readerPreferences.fontFamily().collectAsState()
     val lineSpacing by readerPreferences.lineSpacing().collectAsState()
+    val padding by readerPreferences.padding().collectAsState()
 
     val uiState = viewModel.uiState
     var showSettings by remember { mutableStateOf(false) }
@@ -149,7 +149,7 @@ private fun NovelReaderScreen(
                     Text(text = uiState.error, color = theme.textColor)
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { viewModel.loadChapter() }) {
-                        Text(text = "Retry")
+                        Text(text = stringResource(MR.strings.action_retry))
                     }
                 }
             }
@@ -167,7 +167,7 @@ private fun NovelReaderScreen(
                         .navigationBarsPadding(),
                     state = listState,
                     contentPadding = PaddingValues(
-                        horizontal = 20.dp,
+                        horizontal = padding.dp,
                         vertical = 16.dp,
                     ),
                     verticalArrangement = Arrangement.spacedBy(0.dp),
@@ -178,6 +178,7 @@ private fun NovelReaderScreen(
                                 Text(
                                     text = block.text,
                                     color = theme.textColor,
+                                    fontFamily = fontFamily.composeFontFamily,
                                     style = TextStyle(
                                         fontSize = fontSize.sp,
                                         lineHeight = (fontSize * lineSpacing).sp,
@@ -200,85 +201,19 @@ private fun NovelReaderScreen(
         }
 
         if (showSettings) {
-            ReaderSettingsBar(
+            NovelReaderSettingsSheet(
                 theme = theme,
                 fontSize = fontSize,
+                fontFamily = fontFamily,
                 lineSpacing = lineSpacing,
+                padding = padding,
                 onFontSizeChange = { readerPreferences.fontSize().set(it) },
+                onFontFamilyChange = { readerPreferences.fontFamily().set(it) },
                 onLineSpacingChange = { readerPreferences.lineSpacing().set(it) },
+                onPaddingChange = { readerPreferences.padding().set(it) },
                 onThemeChange = { readerPreferences.theme().set(it) },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(theme.backgroundColor),
+                onDismissRequest = { showSettings = false },
             )
-        }
-    }
-}
-
-@Composable
-private fun ReaderSettingsBar(
-    theme: NovelReaderTheme,
-    fontSize: Int,
-    lineSpacing: Float,
-    onFontSizeChange: (Int) -> Unit,
-    onLineSpacingChange: (Float) -> Unit,
-    onThemeChange: (NovelReaderTheme) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.navigationBarsPadding().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        HorizontalDivider(color = theme.textColor.copy(alpha = 0.2f))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            TextButton(onClick = {
-                onFontSizeChange((fontSize - 1).coerceAtLeast(NovelReaderPreferences.FONT_SIZE_MIN))
-            }) {
-                Text("A-", color = theme.textColor)
-            }
-            Slider(
-                value = fontSize.toFloat(),
-                onValueChange = { onFontSizeChange(it.toInt()) },
-                valueRange =
-                NovelReaderPreferences.FONT_SIZE_MIN.toFloat()..NovelReaderPreferences.FONT_SIZE_MAX.toFloat(),
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = {
-                onFontSizeChange((fontSize + 1).coerceAtMost(NovelReaderPreferences.FONT_SIZE_MAX))
-            }) {
-                Text("A+", color = theme.textColor)
-            }
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Line height", color = theme.textColor)
-            Slider(
-                value = lineSpacing,
-                onValueChange = onLineSpacingChange,
-                valueRange = NovelReaderPreferences.LINE_SPACING_MIN..NovelReaderPreferences.LINE_SPACING_MAX,
-                modifier = Modifier.weight(1f),
-            )
-            Text(String.format("%.1f", lineSpacing), color = theme.textColor)
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            NovelReaderTheme.entries.forEach { candidate ->
-                TextButton(onClick = { onThemeChange(candidate) }) {
-                    Text(
-                        text = candidate.name,
-                        color = if (candidate == theme) theme.textColor else theme.textColor.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
         }
     }
 }

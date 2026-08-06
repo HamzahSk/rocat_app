@@ -20,6 +20,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
@@ -182,6 +183,18 @@ class NovelScreenModel(
         return successState?.chapters?.firstOrNull { !it.read }
     }
 
+    fun toggleFilterDialog() {
+        updateSuccessState { it.copy(showFilterDialog = !it.showFilterDialog) }
+    }
+
+    fun onUnreadFilterChanged(filter: TriState) {
+        updateSuccessState { it.copy(unreadFilter = filter) }
+    }
+
+    fun onDisplayModeChanged(mode: Long) {
+        updateSuccessState { it.copy(displayMode = mode) }
+    }
+
     sealed interface State {
         @Immutable
         data object Loading : State
@@ -193,9 +206,36 @@ class NovelScreenModel(
             val isFromSource: Boolean,
             val chapters: List<NovelChapter>,
             val isRefreshingData: Boolean = false,
+            val unreadFilter: TriState = TriState.DISABLED,
+            val displayMode: Long = DISPLAY_NAME,
+            val showFilterDialog: Boolean = false,
         ) : State {
             val unreadCount: Int
                 get() = chapters.count { !it.read }
+
+            val filterActive: Boolean
+                get() = unreadFilter != TriState.DISABLED
+
+            /**
+             * Chapters after applying the unread filter.
+             */
+            val processedChapters: List<NovelChapter>
+                get() = chapters.filter { chapter ->
+                    applyFilter(unreadFilter) { !chapter.read }
+                }
         }
+    }
+
+    companion object {
+        const val DISPLAY_NAME = 0x00000000L
+        const val DISPLAY_NUMBER = 0x00100000L
+    }
+}
+
+private fun applyFilter(filter: TriState, condition: () -> Boolean): Boolean {
+    return when (filter) {
+        TriState.ENABLED_IS -> condition()
+        TriState.ENABLED_NOT -> !condition()
+        TriState.DISABLED -> true
     }
 }

@@ -54,6 +54,10 @@ class NovelScreen(
             onContinueReading = {
                 continueReading(context, screenModel.source?.id, screenModel.getNextUnreadChapter())
             },
+            onFilterClicked = screenModel::toggleFilterDialog,
+            onUnreadFilterChanged = screenModel::onUnreadFilterChanged,
+            onDisplayModeChanged = screenModel::onDisplayModeChanged,
+            onDismissFilterDialog = screenModel::toggleFilterDialog,
         )
     }
 
